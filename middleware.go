@@ -1,6 +1,7 @@
 package middlware
 
 import (
+	"log"
 	"net/http"
 	"time"
 )
@@ -47,4 +48,21 @@ func (w *StatusWriter) Write(b []byte) (int, error) {
 	w.Length = len(b)
 
 	return w.ResponseWriter.Write(b)
+}
+
+func (m *Middleware) ListenAndServe() {
+	if m.Port == "" {
+		m.Port = DEFAULT_PORT
+	}
+
+	address := "127.0.0.1:" + m.Port
+	server := &http.Server{
+		Addr:         address,
+		Handler:      m, /* http.DefaultServeMux */
+		ReadTimeout:  m.ReadTimeout * time.Second,
+		WriteTimeout: m.WriteTimeout * time.Second,
+	}
+
+	log.Println("Running server on", address)
+	log.Println("PANIC:", server.ListenAndServe())
 }
