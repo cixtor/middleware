@@ -66,3 +66,34 @@ func (m *Middleware) ListenAndServe() {
 	log.Println("Running server on", address)
 	log.Println("PANIC:", server.ListenAndServe())
 }
+
+func (m *Middleware) Handle(method, path string, handle http.HandlerFunc) {
+	var node Node
+	var parts []string
+	var usable []string
+
+	node.Path = "/"
+	node.Dispatcher = handle
+	parts = strings.Split(path, "/")
+
+	// Separate dynamic parameters from the static URL.
+	for _, section := range parts {
+		if section == "" {
+			continue
+		}
+
+		if len(section) > 1 && section[0] == ':' {
+			node.Params = append(node.Params, section[1:])
+			node.NumSections += 1
+			node.NumParams += 1
+			continue
+		}
+
+		usable = append(usable, section)
+		node.NumSections += 1
+	}
+
+	node.Path += strings.Join(usable, "/")
+
+	m.Nodes[method] = append(m.Nodes[method], &node)
+}
