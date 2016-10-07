@@ -97,3 +97,11 @@ func (m *Middleware) Handle(method, path string, handle http.HandlerFunc) {
 
 	m.Nodes[method] = append(m.Nodes[method], &node)
 }
+
+func (m *Middleware) GET(path string, handle http.HandlerFunc) {
+	m.Handle("GET", path, handle)
+}
+
+func (m *Middleware) POST(path string, handle http.HandlerFunc) {
+	m.Handle("POST", path, handle)
+}
