@@ -67,6 +67,20 @@ func (m *Middleware) ListenAndServe() {
 	log.Println("PANIC:", server.ListenAndServe())
 }
 
+func (m *Middleware) ServeFiles(root string, prefix string) http.HandlerFunc {
+	fs := http.FileServer(http.Dir(root))
+	handler := http.StripPrefix(prefix, fs)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path[len(r.URL.Path)-1] == '/' {
+			http.Error(w, http.StatusText(403), http.StatusForbidden)
+			return
+		}
+
+		handler.ServeHTTP(w, r)
+	})
+}
+
 func (m *Middleware) Handle(method, path string, handle http.HandlerFunc) {
 	var node Node
 	var parts []string
@@ -96,6 +110,18 @@ func (m *Middleware) Handle(method, path string, handle http.HandlerFunc) {
 	node.Path += strings.Join(usable, "/")
 
 	m.Nodes[method] = append(m.Nodes[method], &node)
+}
+
+func (m *Middleware) STATIC(root string, prefix string) {
+	var node Node
+
+	node.Path = prefix
+	node.MatchEverything = true
+	node.Params = []string{"filepath"}
+	node.Dispatcher = m.ServeFiles(root, prefix)
+
+	m.Nodes["GET"] = append(m.Nodes["GET"], &node)
+	m.Nodes["POST"] = append(m.Nodes["POST"], &node)
 }
 
 func (m *Middleware) GET(path string, handle http.HandlerFunc) {
