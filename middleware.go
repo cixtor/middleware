@@ -9,8 +9,10 @@ import (
 )
 
 const DEFAULT_PORT = "8080"
+const DEFAULT_HOST = "0.0.0.0"
 
 type Middleware struct {
+	Host         string
 	Port         string
 	Nodes        map[string][]*Node
 	NotFound     http.Handler
@@ -53,11 +55,15 @@ func (w *StatusWriter) Write(b []byte) (int, error) {
 }
 
 func (m *Middleware) ListenAndServe() {
+	if m.Host == "" {
+		m.Host = DEFAULT_HOST
+	}
+
 	if m.Port == "" {
 		m.Port = DEFAULT_PORT
 	}
 
-	address := "127.0.0.1:" + m.Port
+	address := m.Host + ":" + m.Port
 	server := &http.Server{
 		Addr:         address,
 		Handler:      m, /* http.DefaultServeMux */
