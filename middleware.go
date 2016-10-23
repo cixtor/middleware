@@ -372,6 +372,21 @@ func (m *Middleware) POST(path string, handle http.HandlerFunc) {
 	m.Handle("POST", path, handle)
 }
 
+// PUT is a shortcut for middleware.Handle("PUT", path, handle)
+func (m *Middleware) PUT(path string, handle http.HandlerFunc) {
+	m.Handle("PUT", path, handle)
+}
+
+// PATCH is a shortcut for middleware.Handle("PATCH", path, handle)
+func (m *Middleware) PATCH(path string, handle http.HandlerFunc) {
+	m.Handle("PATCH", path, handle)
+}
+
+// DELETE is a shortcut for middleware.Handle("DELETE", path, handle)
+func (m *Middleware) DELETE(path string, handle http.HandlerFunc) {
+	m.Handle("DELETE", path, handle)
+}
+
 // URLParams reads, parses and clean a dynamic URL.
 func (m *Middleware) URLParams(text string) []string {
 	var params []string
