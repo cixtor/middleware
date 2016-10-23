@@ -161,12 +161,10 @@ func (m *Middleware) Dispatcher(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ctx = r.Context()
-	var parameters []string
-	var sections []string
+	var params []string
 
-	var lendef int   // Length defined URL
-	var lenreq int   // Length requested URL
-	var extra string // Dynamic URL parameters
+	var lendef int // Length defined URL
+	var lenreq int // Length requested URL
 
 	for _, child := range children {
 		/* If URL matches and there are no dynamic parameters */
@@ -225,23 +223,15 @@ func (m *Middleware) Dispatcher(w http.ResponseWriter, r *http.Request) {
 		}
 
 		/* Separate dynamic characters from URL */
-		parameters = []string{}
-		extra = r.URL.Path[lendef:lenreq]
-		sections = strings.Split(extra, "/")
-
-		for _, param := range sections {
-			if param != "" {
-				parameters = append(parameters, param)
-			}
-		}
+		params = m.URLParams(r.URL.Path[lendef:lenreq])
 
 		/* Skip if number of dynamic parameters is different */
-		if child.NumParams != len(parameters) {
+		if child.NumParams != len(params) {
 			continue
 		}
 
 		for key, name := range child.Params {
-			ctx = context.WithValue(ctx, name, parameters[key])
+			ctx = context.WithValue(ctx, name, params[key])
 		}
 
 		child.Dispatcher(w, r.WithContext(ctx))
@@ -323,13 +313,13 @@ func (m *Middleware) Handle(method, path string, handle http.HandlerFunc) {
 
 		if len(section) > 1 && section[0] == ':' {
 			node.Params = append(node.Params, section[1:])
-			node.NumSections += 1
-			node.NumParams += 1
+			node.NumSections++
+			node.NumParams++
 			continue
 		}
 
 		usable = append(usable, section)
-		node.NumSections += 1
+		node.NumSections++
 	}
 
 	node.Path += strings.Join(usable, "/")
@@ -380,4 +370,19 @@ func (m *Middleware) GET(path string, handle http.HandlerFunc) {
 // submission instead.
 func (m *Middleware) POST(path string, handle http.HandlerFunc) {
 	m.Handle("POST", path, handle)
+}
+
+// URLParams reads, parses and clean a dynamic URL.
+func (m *Middleware) URLParams(text string) []string {
+	var params []string
+
+	sections := strings.Split(text, "/")
+
+	for _, param := range sections {
+		if param != "" {
+			params = append(params, param)
+		}
+	}
+
+	return params
 }
