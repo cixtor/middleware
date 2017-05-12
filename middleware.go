@@ -27,6 +27,7 @@ type Middleware struct {
 	ReadTimeout      time.Duration
 	WriteTimeout     time.Duration
 	restrictionType  string
+	deniedAddresses  []string
 	allowedAddresses []string
 }
 
@@ -162,8 +163,16 @@ func (m *Middleware) Dispatcher(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if m.restrictionType == "AllowAccessExcept" &&
+		m.InArray(m.deniedAddresses, m.RemoteAddr(r)) {
+		/* Deny access if the IP address was blacklisted */
+		http.Error(w, http.StatusText(403), http.StatusForbidden)
+		return
+	}
+
 	if m.restrictionType == "DenyAccessExcept" &&
 		!m.InArray(m.allowedAddresses, m.RemoteAddr(r)) {
+		/* Deny access if the IP address is not whitelisted */
 		http.Error(w, http.StatusText(403), http.StatusForbidden)
 		return
 	}
@@ -429,6 +438,12 @@ func (m *Middleware) InArray(haystack []string, needle string) bool {
 	}
 
 	return exists
+}
+
+// AllowAccessExcept returns a "403 Forbidden" if the IP is blacklisted.
+func (m *Middleware) AllowAccessExcept(ips []string) {
+	m.restrictionType = "AllowAccessExcept"
+	m.deniedAddresses = ips
 }
 
 // DenyAccessExcept returns a "403 Forbidden" unless the IP is whitelisted.
