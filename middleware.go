@@ -20,12 +20,14 @@ const DefaultHost = "0.0.0.0"
 // custom routes, separated HTTP method processors and named
 // parameters.
 type Middleware struct {
-	Host         string
-	Port         string
-	Nodes        map[string][]*Node
-	NotFound     http.Handler
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
+	Host             string
+	Port             string
+	Nodes            map[string][]*Node
+	NotFound         http.Handler
+	ReadTimeout      time.Duration
+	WriteTimeout     time.Duration
+	restrictionType  string
+	allowedAddresses []string
 }
 
 // StatusWriter is an interface used by an HTTP handler to
@@ -157,6 +159,12 @@ func (m *Middleware) Dispatcher(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "" || r.URL.Path[0] != '/' {
 		/* Bad request error if URL does not starts with slash */
 		http.Error(w, http.StatusText(400), http.StatusBadRequest)
+		return
+	}
+
+	if m.restrictionType == "DenyAccessExcept" &&
+		!m.InArray(m.allowedAddresses, m.RemoteAddr(r)) {
+		http.Error(w, http.StatusText(403), http.StatusForbidden)
 		return
 	}
 
@@ -400,4 +408,31 @@ func (m *Middleware) URLParams(text string) []string {
 	}
 
 	return params
+}
+
+// RemoteAddr returns the IP address of the origin of the request.
+func (m *Middleware) RemoteAddr(r *http.Request) string {
+	parts := strings.Split(r.RemoteAddr, ":")
+
+	return parts[0]
+}
+
+// InArray checks if the text is in the list.
+func (m *Middleware) InArray(haystack []string, needle string) bool {
+	var exists bool
+
+	for _, value := range haystack {
+		if value == needle {
+			exists = true
+			break
+		}
+	}
+
+	return exists
+}
+
+// DenyAccessExcept returns a "403 Forbidden" unless the IP is whitelisted.
+func (m *Middleware) DenyAccessExcept(ips []string) {
+	m.restrictionType = "DenyAccessExcept"
+	m.allowedAddresses = ips
 }
