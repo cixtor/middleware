@@ -37,4 +37,13 @@ func main() {
 }
 ```
 
+You can implement the graceful server shutdown process with this:
+
+```
+router.GET("/stop", func(w http.ResponseWriter, r *http.Request) {
+    w.Write([]byte("Shutting down server...\n"))
+    router.Shutdown()
+})
+```
+
 --- EOF

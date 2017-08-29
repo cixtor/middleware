@@ -14,6 +14,9 @@ const DefaultPort = "8080"
 // DefaultHost is the IP address to attach the web server.
 const DefaultHost = "0.0.0.0"
 
+// DefaultShutdownTimeout is the maximum time before server halt.
+const DefaultShutdownTimeout = 5
+
 // Middleware is the base of the library and the entry point for
 // every HTTP request. It acts as a modular interface that wraps
 // around http.Handler to add additional functionality like
@@ -26,9 +29,12 @@ type Middleware struct {
 	NotFound         http.Handler
 	ReadTimeout      time.Duration
 	WriteTimeout     time.Duration
-	restrictionType  string
-	deniedAddresses  []string
+	ShutdownTimeout  time.Duration
+	serverInstance   *http.Server
+	serverShutdown   chan bool
 	allowedAddresses []string
+	deniedAddresses  []string
+	restrictionType  string
 }
 
 // StatusWriter is an interface used by an HTTP handler to
@@ -101,12 +107,8 @@ func (w *StatusWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-// ListenAndServe listens on the TCP network address srv.Addr
-// and then calls server.Serve to handle requests on incoming
-// connections. Accepted connections are configured to enable
-// TCP keep-alives. If srv.Addr is blank, ":http" is used. The
-// method always returns a non-nil error.
-func (m *Middleware) ListenAndServe() {
+// setDefaultSettings sets the default server settings.
+func (m *Middleware) setDefaultSettings() {
 	if m.Host == "" {
 		m.Host = DefaultHost
 	}
@@ -115,16 +117,52 @@ func (m *Middleware) ListenAndServe() {
 		m.Port = DefaultPort
 	}
 
+	if m.ShutdownTimeout == 0 {
+		m.ShutdownTimeout = DefaultShutdownTimeout
+	}
+}
+
+// gracefulServerShutdown shutdowns the server.
+func (m *Middleware) gracefulServerShutdown() {
+	<-m.serverShutdown /* wait shutdown */
+
+	ctx, _ := context.WithTimeout(
+		context.Background(),
+		m.ShutdownTimeout*time.Second)
+
+	if err := m.serverInstance.Shutdown(ctx); err != nil {
+		log.Println("SIGINT;", err)
+		return
+	}
+
+	log.Println("http: Server finished")
+}
+
+// ListenAndServe listens on the TCP network address srv.Addr
+// and then calls server.Serve to handle requests on incoming
+// connections. Accepted connections are configured to enable
+// TCP keep-alives. If srv.Addr is blank, ":http" is used. The
+// method always returns a non-nil error.
+func (m *Middleware) ListenAndServe() {
+	m.setDefaultSettings()
+
 	address := m.Host + ":" + m.Port
-	server := &http.Server{
+	m.serverShutdown = make(chan bool)
+	m.serverInstance = &http.Server{
 		Addr:         address,
 		Handler:      m, /* http.DefaultServeMux */
 		ReadTimeout:  m.ReadTimeout * time.Second,
 		WriteTimeout: m.WriteTimeout * time.Second,
 	}
 
-	log.Println("Running server on", address)
-	log.Println("PANIC:", server.ListenAndServe())
+	go func() {
+		log.Println("Running server on", address)
+		if err := m.serverInstance.ListenAndServe(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	m.gracefulServerShutdown()
 }
 
 // Dispatcher responds to an HTTP request.
@@ -438,6 +476,11 @@ func (m *Middleware) InArray(haystack []string, needle string) bool {
 	}
 
 	return exists
+}
+
+// Shutdown stops the web server.
+func (m *Middleware) Shutdown() {
+	m.serverShutdown <- true
 }
 
 // AllowAccessExcept returns a "403 Forbidden" if the IP is blacklisted.
