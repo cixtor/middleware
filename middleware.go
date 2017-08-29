@@ -8,14 +8,14 @@ import (
 	"time"
 )
 
-// DefaultPort is the TCP port number to attach the server.
-const DefaultPort = "8080"
+// defaultPort is the TCP port number to attach the server.
+const defaultPort = "8080"
 
-// DefaultHost is the IP address to attach the web server.
-const DefaultHost = "0.0.0.0"
+// defaultHost is the IP address to attach the web server.
+const defaultHost = "0.0.0.0"
 
-// DefaultShutdownTimeout is the maximum time before server halt.
-const DefaultShutdownTimeout = 5
+// defaultShutdownTimeout is the maximum time before server halt.
+const defaultShutdownTimeout = 5
 
 // Middleware is the base of the library and the entry point for
 // every HTTP request. It acts as a modular interface that wraps
@@ -25,11 +25,11 @@ const DefaultShutdownTimeout = 5
 type Middleware struct {
 	Host             string
 	Port             string
-	Nodes            map[string][]*Node
 	NotFound         http.Handler
 	ReadTimeout      time.Duration
 	WriteTimeout     time.Duration
 	ShutdownTimeout  time.Duration
+	nodes            map[string][]*Node
 	serverInstance   *http.Server
 	serverShutdown   chan bool
 	allowedAddresses []string
@@ -55,17 +55,17 @@ type StatusWriter struct {
 // ServeHTTP method to return immediately for every match in the
 // URL no matter if the named parameters do not match.
 type Node struct {
-	Path            string
-	Params          []string
-	NumParams       int
-	NumSections     int
-	Dispatcher      http.HandlerFunc
-	MatchEverything bool
+	path            string
+	params          []string
+	numParams       int
+	numSections     int
+	dispatcher      http.HandlerFunc
+	matchEverything bool
 }
 
 // New returns a new initialized Middleware.
 func New() *Middleware {
-	return &Middleware{Nodes: make(map[string][]*Node)}
+	return &Middleware{nodes: make(map[string][]*Node)}
 }
 
 // WriteHeader sends an HTTP response header with status code.
@@ -110,15 +110,15 @@ func (w *StatusWriter) Write(b []byte) (int, error) {
 // setDefaultSettings sets the default server settings.
 func (m *Middleware) setDefaultSettings() {
 	if m.Host == "" {
-		m.Host = DefaultHost
+		m.Host = defaultHost
 	}
 
 	if m.Port == "" {
-		m.Port = DefaultPort
+		m.Port = defaultPort
 	}
 
 	if m.ShutdownTimeout == 0 {
-		m.ShutdownTimeout = DefaultShutdownTimeout
+		m.ShutdownTimeout = defaultShutdownTimeout
 	}
 }
 
@@ -165,7 +165,7 @@ func (m *Middleware) ListenAndServe() {
 	m.gracefulServerShutdown()
 }
 
-// Dispatcher responds to an HTTP request.
+// dispatcher responds to an HTTP request.
 //
 // ServeHTTP should write reply headers and data to the ResponseWriter
 // and then return. Returning signals that the request is finished; it
@@ -186,8 +186,8 @@ func (m *Middleware) ListenAndServe() {
 // that the effect of the panic was isolated to the active request.
 // It recovers the panic, logs a stack trace to the server error log,
 // and hangs up the connection.
-func (m *Middleware) Dispatcher(w http.ResponseWriter, r *http.Request) {
-	children, ok := m.Nodes[r.Method]
+func (m *Middleware) dispatcher(w http.ResponseWriter, r *http.Request) {
+	children, ok := m.nodes[r.Method]
 
 	if !ok {
 		/* Internal server error if HTTP method is not allowed */
@@ -202,14 +202,14 @@ func (m *Middleware) Dispatcher(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if m.restrictionType == "AllowAccessExcept" &&
-		m.InArray(m.deniedAddresses, m.RemoteAddr(r)) {
+		m.inArray(m.deniedAddresses, m.remoteAddr(r)) {
 		/* Deny access if the IP address was blacklisted */
 		http.Error(w, http.StatusText(403), http.StatusForbidden)
 		return
 	}
 
 	if m.restrictionType == "DenyAccessExcept" &&
-		!m.InArray(m.allowedAddresses, m.RemoteAddr(r)) {
+		!m.inArray(m.allowedAddresses, m.remoteAddr(r)) {
 		/* Deny access if the IP address is not whitelisted */
 		http.Error(w, http.StatusText(403), http.StatusForbidden)
 		return
@@ -223,13 +223,13 @@ func (m *Middleware) Dispatcher(w http.ResponseWriter, r *http.Request) {
 
 	for _, child := range children {
 		/* If URL matches and there are no dynamic parameters */
-		if child.Path == r.URL.Path && child.Params == nil {
-			child.Dispatcher(w, r)
+		if child.path == r.URL.Path && child.params == nil {
+			child.dispatcher(w, r)
 			return
 		}
 
 		/* Continue only if the defined URL contains dynamic params. */
-		if child.Params == nil {
+		if child.params == nil {
 			continue
 		}
 
@@ -260,36 +260,36 @@ func (m *Middleware) Dispatcher(w http.ResponseWriter, r *http.Request) {
 		 * valid URLs with different roots which might translate to handlers
 		 * processing unrelated requests.
 		 */
-		lendef = len(child.Path)
+		lendef = len(child.path)
 		lenreq = len(r.URL.Path)
 		if lendef >= lenreq {
 			continue
 		}
 
 		/* Skip if root section of requested URL does not matches */
-		if child.Path != r.URL.Path[0:lendef] {
+		if child.path != r.URL.Path[0:lendef] {
 			continue
 		}
 
 		/* Handle request for static files */
-		if child.MatchEverything {
-			child.Dispatcher(w, r)
+		if child.matchEverything {
+			child.dispatcher(w, r)
 			return
 		}
 
 		/* Separate dynamic characters from URL */
-		params = m.URLParams(r.URL.Path[lendef:lenreq])
+		params = m.urlParams(r.URL.Path[lendef:lenreq])
 
 		/* Skip if number of dynamic parameters is different */
-		if child.NumParams != len(params) {
+		if child.numParams != len(params) {
 			continue
 		}
 
-		for key, name := range child.Params {
+		for key, name := range child.params {
 			ctx = context.WithValue(ctx, name, params[key])
 		}
 
-		child.Dispatcher(w, r.WithContext(ctx))
+		child.dispatcher(w, r.WithContext(ctx))
 		return
 	}
 
@@ -313,7 +313,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		query = "?" + r.URL.RawQuery
 	}
 
-	m.Dispatcher(&writer, r)
+	m.dispatcher(&writer, r)
 
 	log.Printf("%s %s \"%s %s %s\" %d %d \"%s\" %v",
 		r.Host,
@@ -346,18 +346,18 @@ func (m *Middleware) ServeFiles(root string, prefix string) http.HandlerFunc {
 	})
 }
 
-// Handle registers a new request handle with the given path and method.
+// handle registers a new request handle with the given path and method.
 //
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
-func (m *Middleware) Handle(method, path string, handle http.HandlerFunc) {
+func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
 	var node Node
 	var parts []string
 	var usable []string
 
-	node.Path = "/"
-	node.Dispatcher = handle
+	node.path = "/"
+	node.dispatcher = handle
 	parts = strings.Split(path, "/")
 
 	// Separate dynamic parameters from the static URL.
@@ -367,19 +367,19 @@ func (m *Middleware) Handle(method, path string, handle http.HandlerFunc) {
 		}
 
 		if len(section) > 1 && section[0] == ':' {
-			node.Params = append(node.Params, section[1:])
-			node.NumSections++
-			node.NumParams++
+			node.params = append(node.params, section[1:])
+			node.numSections++
+			node.numParams++
 			continue
 		}
 
 		usable = append(usable, section)
-		node.NumSections++
+		node.numSections++
 	}
 
-	node.Path += strings.Join(usable, "/")
+	node.path += strings.Join(usable, "/")
 
-	m.Nodes[method] = append(m.Nodes[method], &node)
+	m.nodes[method] = append(m.nodes[method], &node)
 }
 
 // STATIC refers to the static assets folder, a place where
@@ -392,13 +392,13 @@ func (m *Middleware) Handle(method, path string, handle http.HandlerFunc) {
 func (m *Middleware) STATIC(root string, prefix string) {
 	var node Node
 
-	node.Path = prefix
-	node.MatchEverything = true
-	node.Params = []string{"filepath"}
-	node.Dispatcher = m.ServeFiles(root, prefix)
+	node.path = prefix
+	node.matchEverything = true
+	node.params = []string{"filepath"}
+	node.dispatcher = m.ServeFiles(root, prefix)
 
-	m.Nodes["GET"] = append(m.Nodes["GET"], &node)
-	m.Nodes["POST"] = append(m.Nodes["POST"], &node)
+	m.nodes["GET"] = append(m.nodes["GET"], &node)
+	m.nodes["POST"] = append(m.nodes["POST"], &node)
 }
 
 // GET requests a representation of the specified resource. Note
@@ -408,7 +408,7 @@ func (m *Middleware) STATIC(root string, prefix string) {
 // arbitrarily by robots or crawlers, which should not need to
 // consider the side effects that a request should cause.
 func (m *Middleware) GET(path string, handle http.HandlerFunc) {
-	m.Handle("GET", path, handle)
+	m.handle("GET", path, handle)
 }
 
 // POST submits data to be processed (e.g., from an HTML form)
@@ -424,26 +424,26 @@ func (m *Middleware) GET(path string, handle http.HandlerFunc) {
 // visible to third parties. Servers can use POST-based form
 // submission instead.
 func (m *Middleware) POST(path string, handle http.HandlerFunc) {
-	m.Handle("POST", path, handle)
+	m.handle("POST", path, handle)
 }
 
-// PUT is a shortcut for middleware.Handle("PUT", path, handle)
+// PUT is a shortcut for middleware.handle("PUT", path, handle)
 func (m *Middleware) PUT(path string, handle http.HandlerFunc) {
-	m.Handle("PUT", path, handle)
+	m.handle("PUT", path, handle)
 }
 
-// PATCH is a shortcut for middleware.Handle("PATCH", path, handle)
+// PATCH is a shortcut for middleware.handle("PATCH", path, handle)
 func (m *Middleware) PATCH(path string, handle http.HandlerFunc) {
-	m.Handle("PATCH", path, handle)
+	m.handle("PATCH", path, handle)
 }
 
-// DELETE is a shortcut for middleware.Handle("DELETE", path, handle)
+// DELETE is a shortcut for middleware.handle("DELETE", path, handle)
 func (m *Middleware) DELETE(path string, handle http.HandlerFunc) {
-	m.Handle("DELETE", path, handle)
+	m.handle("DELETE", path, handle)
 }
 
-// URLParams reads, parses and clean a dynamic URL.
-func (m *Middleware) URLParams(text string) []string {
+// urlParams reads, parses and clean a dynamic URL.
+func (m *Middleware) urlParams(text string) []string {
 	var params []string
 
 	sections := strings.Split(text, "/")
@@ -457,15 +457,15 @@ func (m *Middleware) URLParams(text string) []string {
 	return params
 }
 
-// RemoteAddr returns the IP address of the origin of the request.
-func (m *Middleware) RemoteAddr(r *http.Request) string {
+// remoteAddr returns the IP address of the origin of the request.
+func (m *Middleware) remoteAddr(r *http.Request) string {
 	parts := strings.Split(r.RemoteAddr, ":")
 
 	return parts[0]
 }
 
-// InArray checks if the text is in the list.
-func (m *Middleware) InArray(haystack []string, needle string) bool {
+// inArray checks if the text is in the list.
+func (m *Middleware) inArray(haystack []string, needle string) bool {
 	var exists bool
 
 	for _, value := range haystack {
