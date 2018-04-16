@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -30,6 +31,7 @@ type Middleware struct {
 	WriteTimeout     time.Duration
 	ShutdownTimeout  time.Duration
 	nodes            map[string][]*Node
+	logger           *log.Logger
 	serverInstance   *http.Server
 	serverShutdown   chan bool
 	allowedAddresses []string
@@ -65,7 +67,12 @@ type Node struct {
 
 // New returns a new initialized Middleware.
 func New() *Middleware {
-	return &Middleware{nodes: make(map[string][]*Node)}
+	m := new(Middleware)
+
+	m.nodes = make(map[string][]*Node)
+	m.logger = log.New(os.Stdout, "", log.LstdFlags)
+
+	return m
 }
 
 // WriteHeader sends an HTTP response header with status code.
@@ -131,11 +138,11 @@ func (m *Middleware) gracefulServerShutdown() {
 		m.ShutdownTimeout*time.Second)
 
 	if err := m.serverInstance.Shutdown(ctx); err != nil {
-		log.Println("SIGINT;", err)
+		m.logger.Println("SIGINT;", err)
 		return
 	}
 
-	log.Println("http: Server finished")
+	m.logger.Println("http: Server finished")
 }
 
 // ListenAndServe listens on the TCP network address srv.Addr
@@ -156,9 +163,9 @@ func (m *Middleware) ListenAndServe() {
 	}
 
 	go func() {
-		log.Println("Running server on", address)
+		m.logger.Println("Running server on", address)
 		if err := m.serverInstance.ListenAndServe(); err != nil {
-			log.Println(err)
+			m.logger.Fatal(err)
 		}
 	}()
 
@@ -315,7 +322,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	m.dispatcher(&writer, r)
 
-	log.Printf("%s %s \"%s %s %s\" %d %d \"%s\" %v",
+	m.logger.Printf("%s %s \"%s %s %s\" %d %d \"%s\" %v",
 		r.Host,
 		r.RemoteAddr,
 		r.Method,
