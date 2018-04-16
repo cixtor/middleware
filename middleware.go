@@ -133,16 +133,18 @@ func (m *Middleware) setDefaultSettings() {
 func (m *Middleware) gracefulServerShutdown() {
 	<-m.serverShutdown /* wait shutdown */
 
-	ctx, _ := context.WithTimeout(
+	ctx, cancel := context.WithTimeout(
 		context.Background(),
 		m.ShutdownTimeout*time.Second)
 
+	defer cancel()
+
 	if err := m.serverInstance.Shutdown(ctx); err != nil {
-		m.logger.Println("SIGINT;", err)
+		m.logger.Println("sigint;", err)
 		return
 	}
 
-	m.logger.Println("http: Server finished")
+	m.logger.Println("server shutdown")
 }
 
 // ListenAndServe listens on the TCP network address srv.Addr
@@ -163,7 +165,7 @@ func (m *Middleware) ListenAndServe() {
 	}
 
 	go func() {
-		m.logger.Println("Running server on", address)
+		m.logger.Println("listening on", address)
 		if err := m.serverInstance.ListenAndServe(); err != nil {
 			m.logger.Fatal(err)
 		}
@@ -302,9 +304,10 @@ func (m *Middleware) dispatcher(w http.ResponseWriter, r *http.Request) {
 
 	if m.NotFound != nil {
 		m.NotFound.ServeHTTP(w, r)
-	} else {
-		http.NotFound(w, r)
+		return
 	}
+
+	http.NotFound(w, r)
 }
 
 // ServeHTTP dispatches the request to the handler whose pattern

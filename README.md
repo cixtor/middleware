@@ -2,8 +2,6 @@
 
 Primitive middleware for web services written using the [Go programming language](https://golang.org/). It handles common HTTP methods, static files, untrusted directory listing, non-defined URLs and request timeouts. The project is based on [HTTP Router](https://github.com/julienschmidt/httprouter) by Julien Schmidt and adapted to my personal needs. The timeouts are based on the article [Complete Guide to Go net/http Timeouts](https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/) by CloudFlare.
 
-The project was originally part of [Pastio](https://github.com/cixtor/pastio), a Pastebin-like web application developed and later decoupled as an independent package to allow other developers to import this functionality in their own projects.
-
 If _"router.ReadTimeout"_ is omitted the server will always wait for the continuation of the data expected by _"Content-Length"_, this is not a good practice so it is recommended to defined a minimal timeout to prevent malicious attacks against the web service.
 
 All the handlers follow the same standard as _"http.HandlerFunc"_ so you are free to add more handlers in the middle to improve the cache, attach SSL certificates, or change the format of the logs.
@@ -15,8 +13,6 @@ package main
 
 import "github.com/cixtor/middleware"
 
-const PUBLIC_FOLDER = "assets"
-
 func main() {
     var app Application
 
@@ -26,7 +22,7 @@ func main() {
     router.ReadTimeout = 5
     router.WriteTimeout = 10
 
-    router.STATIC(PUBLIC_FOLDER, "/assets")
+    router.STATIC("/var/www/public_html", "/assets")
 
     router.POST("/save", app.Save)
     router.GET("/modes", app.Modes)
@@ -39,11 +35,24 @@ func main() {
 
 You can implement the graceful server shutdown process with this:
 
-```
-router.GET("/stop", func(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("Shutting down server...\n"))
-    router.Shutdown()
-})
+```go
+func main() {
+    router := middleware.New()
+
+    shutdown := make(chan os.Signal, 1)
+    signal.Notify(shutdown, os.Interrupt)
+
+    go func() {
+        <-shutdown
+        router.Shutdown()
+    }()
+
+    router.ListenAndServe()
+}
 ```
 
---- EOF
+### System Logs
+
+* Access logs are sent to `os.Stdout`
+* Error logs are sent to `os.Stderr`
+* Redirect using `webserver 1>access.log 2>errors.logs`
