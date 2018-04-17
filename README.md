@@ -19,6 +19,7 @@ func main() {
     router := middleware.New()
 
     router.Port = "9090"
+    router.IdleTimeout = 5
     router.ReadTimeout = 5
     router.WriteTimeout = 10
 

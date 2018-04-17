@@ -27,6 +27,7 @@ type Middleware struct {
 	Host             string
 	Port             string
 	NotFound         http.Handler
+	IdleTimeout      time.Duration
 	ReadTimeout      time.Duration
 	WriteTimeout     time.Duration
 	ShutdownTimeout  time.Duration
@@ -160,6 +161,7 @@ func (m *Middleware) ListenAndServe() {
 	m.serverInstance = &http.Server{
 		Addr:         address,
 		Handler:      m, /* http.DefaultServeMux */
+		IdleTimeout:  m.IdleTimeout * time.Second,
 		ReadTimeout:  m.ReadTimeout * time.Second,
 		WriteTimeout: m.WriteTimeout * time.Second,
 	}
