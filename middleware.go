@@ -24,20 +24,21 @@ const defaultShutdownTimeout = 5
 // custom routes, separated HTTP method processors and named
 // parameters.
 type Middleware struct {
-	Host             string
-	Port             string
-	NotFound         http.Handler
-	IdleTimeout      time.Duration
-	ReadTimeout      time.Duration
-	WriteTimeout     time.Duration
-	ShutdownTimeout  time.Duration
-	nodes            map[string][]*Node
-	logger           *log.Logger
-	serverInstance   *http.Server
-	serverShutdown   chan bool
-	allowedAddresses []string
-	deniedAddresses  []string
-	restrictionType  string
+	Host              string
+	Port              string
+	NotFound          http.Handler
+	IdleTimeout       time.Duration
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	ShutdownTimeout   time.Duration
+	ReadHeaderTimeout time.Duration
+	nodes             map[string][]*Node
+	logger            *log.Logger
+	serverInstance    *http.Server
+	serverShutdown    chan bool
+	allowedAddresses  []string
+	deniedAddresses   []string
+	restrictionType   string
 }
 
 // StatusWriter is an interface used by an HTTP handler to
@@ -159,11 +160,12 @@ func (m *Middleware) ListenAndServe() {
 	address := m.Host + ":" + m.Port
 	m.serverShutdown = make(chan bool)
 	m.serverInstance = &http.Server{
-		Addr:         address,
-		Handler:      m, /* http.DefaultServeMux */
-		IdleTimeout:  m.IdleTimeout * time.Second,
-		ReadTimeout:  m.ReadTimeout * time.Second,
-		WriteTimeout: m.WriteTimeout * time.Second,
+		Addr:              address,
+		Handler:           m, /* http.DefaultServeMux */
+		IdleTimeout:       m.IdleTimeout * time.Second,
+		ReadTimeout:       m.ReadTimeout * time.Second,
+		WriteTimeout:      m.WriteTimeout * time.Second,
+		ReadHeaderTimeout: m.ReadHeaderTimeout * time.Second,
 	}
 
 	go func() {
