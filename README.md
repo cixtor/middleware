@@ -8,6 +8,8 @@ All the handlers follow the same standard as _"http.HandlerFunc"_ so you are fre
 
 The router supports dynamic named parameters in the form of `/a/b/:id/:foobar` and making use of the [context](https://golang.org/pkg/context/) package the values for `id` and `foobar` are passed to the handler. Make sure that all the routes are defined in a cascade from longest to smallest to prevent conflicts and allow the server to execute the correct handler.
 
+### Usage
+
 ```go
 package main
 
@@ -34,7 +36,14 @@ func main() {
 }
 ```
 
-You can implement the graceful server shutdown process with this:
+### TLS Support
+
+```
+openssl genrsa -out server.key 2048
+openssl ecparam -genkey -name secp384r1 -out server.key
+```
+
+### Graceful Shutdown
 
 ```go
 func main() {

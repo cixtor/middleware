@@ -149,12 +149,8 @@ func (m *Middleware) gracefulServerShutdown() {
 	m.logger.Println("server shutdown")
 }
 
-// ListenAndServe listens on the TCP network address srv.Addr
-// and then calls server.Serve to handle requests on incoming
-// connections. Accepted connections are configured to enable
-// TCP keep-alives. If srv.Addr is blank, ":http" is used. The
-// method always returns a non-nil error.
-func (m *Middleware) ListenAndServe() {
+// startWebServer setups and starts the web server.
+func (m *Middleware) startWebServer(f func()) {
 	m.setDefaultSettings()
 
 	address := m.Host + ":" + m.Port
@@ -170,12 +166,40 @@ func (m *Middleware) ListenAndServe() {
 
 	go func() {
 		m.logger.Println("listening on", address)
-		if err := m.serverInstance.ListenAndServe(); err != nil {
-			m.logger.Fatal(err)
-		}
+		f() /* m.ListenAndServe OR m.ListenAndServeTLS */
 	}()
 
 	m.gracefulServerShutdown()
+}
+
+// ListenAndServe listens on the TCP network address srv.Addr
+// and then calls server.Serve to handle requests on incoming
+// connections. Accepted connections are configured to enable
+// TCP keep-alives. If srv.Addr is blank, ":http" is used. The
+// method always returns a non-nil error.
+func (m *Middleware) ListenAndServe() {
+	m.startWebServer(func() {
+		err := m.serverInstance.ListenAndServe()
+
+		if err != nil {
+			m.logger.Fatal(err)
+		}
+	})
+}
+
+// ListenAndServeTLS acts identically to ListenAndServe, except that it
+// expects HTTPS connections. Additionally, files containing a certificate and
+// matching private key for the server must be provided. If the certificate
+// is signed by a certificate authority, the certFile should be the concatenation
+// of the server's certificate, any intermediates, and the CA's certificate.
+func (m *Middleware) ListenAndServeTLS(certFile string, keyFile string) {
+	m.startWebServer(func() {
+		err := m.serverInstance.ListenAndServeTLS(certFile, keyFile)
+
+		if err != nil {
+			m.logger.Fatal(err)
+		}
+	})
 }
 
 // dispatcher responds to an HTTP request.
