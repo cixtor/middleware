@@ -20,7 +20,7 @@ func main() {
 
     router := middleware.New()
 
-    router.Port = "9090"
+    router.Port = "8080"
     router.IdleTimeout = 5
     router.ReadTimeout = 5
     router.WriteTimeout = 10
@@ -38,10 +38,28 @@ func main() {
 
 ### TLS Support
 
+Generate the SSL certificates:
+
 ```
 openssl genrsa -out server.key 2048
+
 openssl ecparam -genkey -name secp384r1 -out server.key
+# Country Name (2 letter code) []:CA
+# State or Province Name (full name) []:British Columbia
+# Locality Name (eg, city) []:Vancouver
+# Organization Name (eg, company) []:Foobar Inc.
+# Organizational Unit Name (eg, section) []:
+# Common Name (eg, fully qualified host name) []:middleware.test
+# Email Address []:webmaster@middleware.test
+
+echo -e "127.0.0.1\tmiddleware.test" | sudo tee -a /etc/hosts
 ```
+
+Use `router.ListenAndServeTLS("server.crt", "server.key", nil)` to start the web server.
+
+Test the connection using cURL `curl --cacert server.crt "https://middleware.test:8080"`
+
+Add a custom TLS configuration by passing a `&tls.Config{}` as the last parameter instead of `nil`.
 
 ### Graceful Shutdown
 

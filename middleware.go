@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/tls"
 	"log"
 	"net/http"
 	"os"
@@ -192,8 +193,10 @@ func (m *Middleware) ListenAndServe() {
 // matching private key for the server must be provided. If the certificate
 // is signed by a certificate authority, the certFile should be the concatenation
 // of the server's certificate, any intermediates, and the CA's certificate.
-func (m *Middleware) ListenAndServeTLS(certFile string, keyFile string) {
+func (m *Middleware) ListenAndServeTLS(certFile string, keyFile string, cfg *tls.Config) {
 	m.startWebServer(func() {
+		m.serverInstance.TLSConfig = cfg /* custom TLLS config */
+
 		err := m.serverInstance.ListenAndServeTLS(certFile, keyFile)
 
 		if err != nil {
