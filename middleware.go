@@ -483,6 +483,11 @@ func (m *Middleware) DELETE(path string, handle http.HandlerFunc) {
 	m.handle("DELETE", path, handle)
 }
 
+// HEAD is a shortcut for middleware.handle("HEAD", path, handle)
+func (m *Middleware) HEAD(path string, handle http.HandlerFunc) {
+	m.handle("HEAD", path, handle)
+}
+
 // urlParams reads, parses and clean a dynamic URL.
 func (m *Middleware) urlParams(text string) []string {
 	var params []string
