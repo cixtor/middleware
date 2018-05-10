@@ -488,6 +488,11 @@ func (m *Middleware) HEAD(path string, handle http.HandlerFunc) {
 	m.handle("HEAD", path, handle)
 }
 
+// OPTIONS is a shortcut for middleware.handle("OPTIONS", path, handle)
+func (m *Middleware) OPTIONS(path string, handle http.HandlerFunc) {
+	m.handle("OPTIONS", path, handle)
+}
+
 // urlParams reads, parses and clean a dynamic URL.
 func (m *Middleware) urlParams(text string) []string {
 	var params []string
