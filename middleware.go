@@ -17,7 +17,7 @@ const defaultPort = "8080"
 const defaultHost = "0.0.0.0"
 
 // defaultShutdownTimeout is the maximum time before server halt.
-const defaultShutdownTimeout = 5
+const defaultShutdownTimeout = 5 * time.Second
 
 // Middleware is the base of the library and the entry point for
 // every HTTP request. It acts as a modular interface that wraps
@@ -138,7 +138,8 @@ func (m *Middleware) gracefulServerShutdown() {
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		m.ShutdownTimeout*time.Second)
+		m.ShutdownTimeout,
+	)
 
 	defer cancel()
 
@@ -158,11 +159,11 @@ func (m *Middleware) startWebServer(f func()) {
 	m.serverShutdown = make(chan bool)
 	m.serverInstance = &http.Server{
 		Addr:              address,
-		Handler:           m, /* http.DefaultServeMux */
-		IdleTimeout:       m.IdleTimeout * time.Second,
-		ReadTimeout:       m.ReadTimeout * time.Second,
-		WriteTimeout:      m.WriteTimeout * time.Second,
-		ReadHeaderTimeout: m.ReadHeaderTimeout * time.Second,
+		Handler:           m,
+		IdleTimeout:       m.IdleTimeout,
+		ReadTimeout:       m.ReadTimeout,
+		WriteTimeout:      m.WriteTimeout,
+		ReadHeaderTimeout: m.ReadHeaderTimeout,
 	}
 
 	go func() {
