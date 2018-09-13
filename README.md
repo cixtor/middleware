@@ -1,42 +1,93 @@
 # Go HTTP Middleware [![GoReport](https://goreportcard.com/badge/github.com/cixtor/middleware)](https://goreportcard.com/report/github.com/cixtor/middleware) [![GoDoc](https://godoc.org/github.com/cixtor/middleware?status.svg)](https://godoc.org/github.com/cixtor/middleware)
 
-Primitive middleware for web services written using the [Go programming language](https://golang.org/). It handles common HTTP methods, static files, untrusted directory listing, non-defined URLs and request timeouts. The project is based on [HTTP Router](https://github.com/julienschmidt/httprouter) by Julien Schmidt and adapted to my personal needs. The timeouts are based on the article [Complete Guide to Go net/http Timeouts](https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/) by CloudFlare.
+HTTP middleware for web services [written in Go](https://golang.org/) _(aka. Golang)_.
 
-If _"router.ReadTimeout"_ is omitted the server will always wait for the continuation of the data expected by _"Content-Length"_, this is not a good practice so it is recommended to defined a minimal timeout to prevent malicious attacks against the web service.
+* Follows the Go standards to comply with [http.HandlerFunc](https://golang.org/pkg/net/http/#HandlerFunc),
+* Handles different HTTP methods _(GET, POST, OPTIONS, etc)_,
+* Handles IP address whitelisting to allow access to specific routes,
+* Handles IP address blacklisting to deny access to specific routes,
+* Handles serving of static files _(CSS, JavaScript, Images, etc)_,
+* Handles HTTP requests with failures related with timeouts,
+* Blocks directory listing of folders without an index file,
+* Handles HTTP requests to non-existing HTTP routes,
+* Supports dynamic named parameters in the URL.
 
-All the handlers follow the same standard as _"http.HandlerFunc"_ so you are free to add more handlers in the middle to improve the cache, attach SSL certificates, or change the format of the logs.
+## Installation
 
-The router supports dynamic named parameters in the form of `/a/b/:id/:foobar` and making use of the [context](https://golang.org/pkg/context/) package the values for `id` and `foobar` are passed to the handler. Make sure that all the routes are defined in a cascade from longest to smallest to prevent conflicts and allow the server to execute the correct handler.
+```sh
+go get -u github.com/cixtor/middleware
+```
 
-### Usage
+## Usage
 
-```go
+Below you can find an example of how to implement a web server with this router:
+
+```golang
 package main
 
 import "github.com/cixtor/middleware"
 
-func main() {
-    var app Application
+var router = middleware.New()
 
-    router := middleware.New()
-
-    router.Port = "8080"
-    router.IdleTimeout = 5
-    router.ReadTimeout = 5
+func init() {
+    router.Port = "3000"
+    router.IdleTimeout = 10
+    router.ReadTimeout = 10
     router.WriteTimeout = 10
+    router.ShutdownTimeout = 10
+    router.ReadHeaderTimeout = 10
 
     router.STATIC("/var/www/public_html", "/assets")
+}
 
-    router.POST("/save", app.Save)
-    router.GET("/modes", app.Modes)
-    router.GET("/raw/:unique", app.RawCode)
-    router.GET("/", app.Index)
+func main() {
+    router.ListenAndServe()
+}
+```
+
+## http.HandlerFunc
+
+The handler uses the Go [http.HandlerFunc](https://golang.org/pkg/net/http/#HandlerFunc) standard as you can see below:
+
+```golang
+package main
+
+import "net/http"
+
+func init() {
+    router.GET("/", index)
+}
+
+func index(w http.ResponseWriter, r *http.Request) {
+    w.Write([]byte("Hello World!\n"))
+}
+```
+
+## Graceful Shutdown
+
+A graceful shutdown can be added with the following code:
+
+```golang
+import (
+    "os"
+    "os/signal"
+    "syscall"
+}
+
+func main() {
+    shutdown := make(chan os.Signal, 1)
+    signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+
+    go func() {
+        <-shutdown
+        router.Shutdown()
+    }()
 
     router.ListenAndServe()
 }
 ```
 
-### TLS Support
+## TLS Support
 
 Generate the SSL certificates:
 
@@ -61,25 +112,7 @@ Test the connection using cURL `curl --cacert server.crt "https://middleware.tes
 
 Add a custom TLS configuration by passing a `&tls.Config{}` as the last parameter instead of `nil`.
 
-### Graceful Shutdown
-
-```go
-func main() {
-    router := middleware.New()
-
-    shutdown := make(chan os.Signal, 1)
-    signal.Notify(shutdown, os.Interrupt)
-
-    go func() {
-        <-shutdown
-        router.Shutdown()
-    }()
-
-    router.ListenAndServe()
-}
-```
-
-### System Logs
+## System Logs
 
 * Access logs are sent to `os.Stdout`
 * Error logs are sent to `os.Stderr`
