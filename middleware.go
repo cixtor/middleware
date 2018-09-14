@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -18,6 +19,12 @@ const defaultHost = "0.0.0.0"
 
 // defaultShutdownTimeout is the maximum time before server halt.
 const defaultShutdownTimeout = 5 * time.Second
+
+// contextKey is the key for the parameters in the request Context.
+type contextKey string
+
+// paramsKey is the key for the parameters in the request Context.
+var paramsKey = contextKey("MiddlewareParameter")
 
 // Middleware is the base of the library and the entry point for
 // every HTTP request. It acts as a modular interface that wraps
@@ -66,6 +73,12 @@ type Node struct {
 	numSections     int
 	dispatcher      http.HandlerFunc
 	matchEverything bool
+}
+
+// httpParam represents a single parameter in the URL.
+type httpParam struct {
+	Name  string
+	Value string
 }
 
 // New returns a new initialized Middleware.
@@ -206,28 +219,40 @@ func (m *Middleware) ListenAndServeTLS(certFile string, keyFile string, cfg *tls
 	})
 }
 
-// dispatcher responds to an HTTP request.
+// handleRequest responds to an HTTP request.
 //
-// ServeHTTP should write reply headers and data to the ResponseWriter
-// and then return. Returning signals that the request is finished; it
-// is not valid to use the ResponseWriter or read from the
-// Request.Body after or concurrently with the completion of the
-// ServeHTTP call.
+// The function selects the HTTP handler by traversing a tree that contains a
+// list of all the defined URLs without the dynamic parameters (if any). If the
+// defined URL doesn’t contains dynamic parameters, the function executes the
+// HTTP handler immediately if the URL path matches the request. If there are
+// dynamic parameters, the function checks if the URL contains enough data to
+// extract them, if there is not enough data, it responds with “404 Not Found“,
+// otherwise, it attaches the values for the corresponding parameters to the
+// request context, then executes the HTTP handler.
 //
-// Depending on the HTTP client software, HTTP protocol version, and
-// any intermediaries between the client and the Go server, it may not
-// be possible to read from the Request.Body after writing to the
-// ResponseWriter. Cautious handlers should read the Request.Body
-// first, and then reply.
+// Here is an example of a successful request:
 //
-// Except for reading the body, handlers should not modify the
-// provided Request.
+//   Defined URL: /foo/bar/:group
+//   Request URL: /foo/bar/example
 //
-// If ServeHTTP panics, the server (the caller of ServeHTTP) assumes
-// that the effect of the panic was isolated to the active request.
-// It recovers the panic, logs a stack trace to the server error log,
-// and hangs up the connection.
-func (m *Middleware) dispatcher(w http.ResponseWriter, r *http.Request) {
+// This request returns a "200 OK" and the HTTP handler can then obtain a copy
+// of the value for the “group” parameter using `middleware.Param()`. Or simply
+// by reading the raw parameter from the request context.
+//
+// Here is an example of an invalid request:
+//
+//   Defined URL: /foo/bar/:group
+//   Request URL: /foo/bar/
+//   Request URL: /foo/bar
+//   Request URL: /foo/
+//   Request URL: /foo
+//   Request URL: /
+//
+// All these requests will return “404 Not Found” because none of them matches
+// the defined URL. This is because trailing slashes are ignored, so even the
+// first attempt (which is similar to what the HTTP handler is expecting) will
+// fail as there is not enough data to set the value for the “group” parameter.
+func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 	children, ok := m.nodes[r.Method]
 
 	if !ok {
@@ -256,81 +281,27 @@ func (m *Middleware) dispatcher(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var ctx = r.Context()
-	var params []string
-
-	var lendef int // Length defined URL
-	var lenreq int // Length requested URL
+	var err error
+	var params []httpParam
 
 	for _, child := range children {
-		/* If URL matches and there are no dynamic parameters */
-		if child.path == r.URL.Path && child.params == nil {
+		params, err = parseReqParams(r, child)
+
+		if err != nil {
+			continue
+		}
+
+		if len(params) == 0 {
 			child.dispatcher(w, r)
 			return
 		}
 
-		/* Continue only if the defined URL contains dynamic params. */
-		if child.params == nil {
-			continue
-		}
-
-		/**
-		 * If the defined URL contains dynamic parameters we need to check if
-		 * the requested URL is longer than the defined URL without the dynamic
-		 * sections, this means that the requested URL must be longer than the
-		 * clean defined URL.
-		 *
-		 * Defined (Raw):   /lorem/ipsum/dolor/:unique
-		 * Defined (Clean): /lorem/ipsum/dolor
-		 * Req. URL (Bad):  /lorem/ipsum/dolor
-		 * Req. URL (Semi): /lorem/ipsum/dolor/
-		 * Req. URL (Good): /lorem/ipsum/dolor/something
-		 *
-		 * Notice how the good requested URL has more characters than the clean
-		 * defined URL, the extra characters will be extracted and converted
-		 * into variables to be passed to the handler. The bad requested URL
-		 * matches the exact same clean defined URL but has no extra characters,
-		 * so variable "unique" will be empty which is non-processable. The semi
-		 * good requested URL contains one character more than the clean defined
-		 * URL, the extra character is simply a forward slash, which means the
-		 * dynamic variable "unique" will be empty but at least it was on purpose.
-		 *
-		 * The requested URL must contains the same characters than the clean
-		 * defined URL, at least from index zero, the rest of the requested URL
-		 * can be different. This is to prevent malicious requests with semi
-		 * valid URLs with different roots which might translate to handlers
-		 * processing unrelated requests.
-		 */
-		lendef = len(child.path)
-		lenreq = len(r.URL.Path)
-		if lendef >= lenreq {
-			continue
-		}
-
-		/* Skip if root section of requested URL does not matches */
-		if child.path != r.URL.Path[0:lendef] {
-			continue
-		}
-
-		/* Handle request for static files */
-		if child.matchEverything {
-			child.dispatcher(w, r)
-			return
-		}
-
-		/* Separate dynamic characters from URL */
-		params = m.urlParams(r.URL.Path[lendef:lenreq])
-
-		/* Skip if number of dynamic parameters is different */
-		if child.numParams != len(params) {
-			continue
-		}
-
-		for key, name := range child.params {
-			ctx = context.WithValue(ctx, name, params[key])
-		}
-
-		child.dispatcher(w, r.WithContext(ctx))
+		child.dispatcher(w, r.WithContext(
+			context.WithValue(
+				r.Context(),
+				paramsKey,
+				params,
+			)))
 		return
 	}
 
@@ -340,6 +311,87 @@ func (m *Middleware) dispatcher(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.NotFound(w, r)
+}
+
+// parseReqParams returns a list of request parameters (which may be empty) or
+// an error if the requested URL doesn’t match the URL defined in the Btree.
+func parseReqParams(r *http.Request, child *Node) ([]httpParam, error) {
+	// The URL matches and there are no dynamic parameters.
+	//
+	// defined: /lorem/ipsum/dolor
+	// request: /lorem/ipsum/dolor
+	// execute: http.handler
+	if child.path == r.URL.Path && child.params == nil {
+		return []httpParam{}, nil
+	}
+
+	// URL doesn’t match (no dynamic parameters).
+	//
+	// defined: /lorem/ipsum
+	// request: /lorem/ipsum/dolor
+	// execute: continue
+	//
+	// In the example above, the requested URL apparently matches the one
+	// defined before, but there seems to be a dynamic parameter that was not
+	// expected. Continue iterating until the dispatcher can find an URL that
+	// both matches the path and the list of dynamic parameters.
+	if child.params == nil {
+		return nil, errors.New("URL doesn’t match (no dynamic parameters)")
+	}
+
+	// Defined URL is greater or equal than the requested URL.
+	//
+	// defined: /lorem/ipsum/:example
+	// request: /lorem/ipsum
+	// execute: continue
+	//
+	// In the example above, the defined URL is cut in half to separate the
+	// static path from the list of dynamic parameter. This causes both the
+	// static URL and the requested URL to match, but the existence of dynamic
+	// parameters forces the operation to stop because there is not enough
+	// information in the URL to set a value for the parameter.
+	lendef := len(child.path)
+	lenreq := len(r.URL.Path)
+	if lendef >= lenreq {
+		return nil, errors.New("defined URL is greater or equal than the requested URL")
+	}
+
+	// URL doesn’t match (with dynamic parameters).
+	//
+	// defined: /lorem/ipsum/:example
+	// request: /hello/world/something
+	// execute: continue
+	//
+	// In the example above, the length of the defined URL (after removing
+	// the dynamic parameter) matches the length of the requested URL after
+	// extracting the information used to set the value for the parameters.
+	// However, the two remaining static URLs do not match.
+	if child.path != r.URL.Path[0:lendef] {
+		return nil, errors.New("URL doesn’t match (with dynamic parameters)")
+	}
+
+	// Handle request for static files.
+	if child.matchEverything {
+		return []httpParam{}, nil
+	}
+
+	// Separate dynamic parameters from requested URL.
+	params := make([]httpParam, child.numParams)
+	rawParams := r.URL.Path[lendef+1 : lenreq]
+	values := strings.Split(rawParams, "/")
+
+	if len(values) != child.numParams {
+		return []httpParam{}, errors.New("incorrect number of dynamic parameters")
+	}
+
+	for idx := 0; idx < child.numParams; idx++ {
+		params[idx] = httpParam{
+			Name:  child.params[idx],
+			Value: values[idx],
+		}
+	}
+
+	return params, nil
 }
 
 // ServeHTTP dispatches the request to the handler whose pattern
@@ -355,7 +407,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		query = "?" + r.URL.RawQuery
 	}
 
-	m.dispatcher(&writer, r)
+	m.handleRequest(&writer, r)
 
 	m.logger.Printf("%s %s \"%s %s %s\" %d %d \"%s\" %v",
 		r.Host,
@@ -494,21 +546,6 @@ func (m *Middleware) OPTIONS(path string, handle http.HandlerFunc) {
 	m.handle("OPTIONS", path, handle)
 }
 
-// urlParams reads, parses and clean a dynamic URL.
-func (m *Middleware) urlParams(text string) []string {
-	var params []string
-
-	sections := strings.Split(text, "/")
-
-	for _, param := range sections {
-		if param != "" {
-			params = append(params, param)
-		}
-	}
-
-	return params
-}
-
 // remoteAddr returns the IP address of the origin of the request.
 func (m *Middleware) remoteAddr(r *http.Request) string {
 	parts := strings.Split(r.RemoteAddr, ":")
@@ -548,6 +585,18 @@ func (m *Middleware) DenyAccessExcept(ips []string) {
 }
 
 // Param returns the value for a parameter in the URL.
-func Param(r *http.Request, key interface{}) interface{} {
-	return r.Context().Value(key)
+func Param(r *http.Request, key string) string {
+	params, ok := r.Context().Value(paramsKey).([]httpParam)
+
+	if !ok {
+		return ""
+	}
+
+	for _, param := range params {
+		if param.Name == key {
+			return param.Value
+		}
+	}
+
+	return ""
 }
