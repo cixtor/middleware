@@ -546,3 +546,8 @@ func (m *Middleware) DenyAccessExcept(ips []string) {
 	m.restrictionType = "DenyAccessExcept"
 	m.allowedAddresses = ips
 }
+
+// Param returns the value for a parameter in the URL.
+func Param(r *http.Request, key interface{}) interface{} {
+	return r.Context().Value(key)
+}
