@@ -181,20 +181,3 @@ func parseReqParams(r *http.Request, child *route) ([]httpParam, error) {
 
 	return params, nil
 }
-
-// Param returns the value for a parameter in the URL.
-func Param(r *http.Request, key string) string {
-	params, ok := r.Context().Value(paramsKey).([]httpParam)
-
-	if !ok {
-		return ""
-	}
-
-	for _, param := range params {
-		if param.Name == key {
-			return param.Value
-		}
-	}
-
-	return ""
-}
