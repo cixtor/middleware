@@ -44,27 +44,25 @@ func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 	children, ok := m.nodes[r.Method]
 
 	if !ok {
-		/* Internal server error if HTTP method is not allowed */
+		// HTTP method not allowed, return “405 Method Not Allowed”.
 		http.Error(w, http.StatusText(405), http.StatusMethodNotAllowed)
 		return
 	}
 
 	if r.URL.Path == "" || r.URL.Path[0] != '/' {
-		/* Bad request error if URL does not starts with slash */
+		// URL prefix is invalid, return “400 Bad Request”.
 		http.Error(w, http.StatusText(400), http.StatusBadRequest)
 		return
 	}
 
-	if m.restrictionType == "AllowAccessExcept" &&
-		inArray(m.deniedAddresses, remoteAddr(r)) {
-		/* Deny access if the IP address was blacklisted */
+	if m.restrictionType == allowAccessExcept && inArray(m.deniedAddresses, remoteAddr(r)) {
+		// IP address was blacklisted, return “403 Forbidden”.
 		http.Error(w, http.StatusText(403), http.StatusForbidden)
 		return
 	}
 
-	if m.restrictionType == "DenyAccessExcept" &&
-		!inArray(m.allowedAddresses, remoteAddr(r)) {
-		/* Deny access if the IP address is not whitelisted */
+	if m.restrictionType == denyAccessExcept && !inArray(m.allowedAddresses, remoteAddr(r)) {
+		// IP address is not whitelisted, return “403 Forbidden”.
 		http.Error(w, http.StatusText(403), http.StatusForbidden)
 		return
 	}

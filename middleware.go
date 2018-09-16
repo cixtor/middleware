@@ -16,6 +16,12 @@ const defaultHost = "0.0.0.0"
 // defaultShutdownTimeout is the maximum time before server halt.
 const defaultShutdownTimeout = 5 * time.Second
 
+// allowAccessExcept is the ID for the "allow" restriction rule.
+const allowAccessExcept = 0x6411a9
+
+// denyAccessExcept is the ID for the "deny" restriction rule.
+const denyAccessExcept = 0x32afb2
+
 // Middleware is the base of the library and the entry point for every HTTP
 // request. It acts as a modular interface that wraps around http.Handler to
 // add additional functionality like custom routes, separated HTTP method
@@ -35,7 +41,7 @@ type Middleware struct {
 	serverShutdown    chan bool
 	allowedAddresses  []string
 	deniedAddresses   []string
-	restrictionType   string
+	restrictionType   int
 }
 
 // route is a data structure to keep the defined routes, named parameters and
