@@ -20,34 +20,20 @@ go get -u github.com/cixtor/middleware
 
 ## Usage
 
-Below you can find an example of how to implement a web server with this router:
+Below is an example of a basic web server with this router:
 
 ```golang
 package main
 
 import "github.com/cixtor/middleware"
 
-var router = middleware.New()
-
-func init() {
-    router.Port = "3000"
-    router.IdleTimeout = 10
-    router.ReadTimeout = 10
-    router.WriteTimeout = 10
-    router.ShutdownTimeout = 10
-    router.ReadHeaderTimeout = 10
-
-    router.STATIC("/var/www/public_html", "/assets")
-}
-
 func main() {
+    router := middleware.New()
     router.ListenAndServe()
 }
 ```
 
-## http.HandlerFunc
-
-The handler uses the Go [http.HandlerFunc](https://golang.org/pkg/net/http/#HandlerFunc) standard as you can see below:
+The HTTP handler uses the [http.HandlerFunc](https://golang.org/pkg/net/http/#HandlerFunc) type like this:
 
 ```golang
 package main
@@ -62,6 +48,30 @@ func index(w http.ResponseWriter, r *http.Request) {
     w.Write([]byte("Hello World!\n"))
 }
 ```
+
+## Sane Timeouts
+
+By default, all the timeouts are configured to 5 seconds, you can change them like this:
+
+```golang
+router.IdleTimeout = 10 * time.Second
+router.ReadTimeout = 10 * time.Second
+router.WriteTimeout = 10 * time.Second
+router.ShutdownTimeout = 10 * time.Second
+router.ReadHeaderTimeout = 10 * time.Second
+```
+
+## Serving Static Files
+
+```golang
+router.STATIC("/var/www/public_html", "/assets")
+```
+
+In the example above, we are assumming that a directory located at `/var/www/public_html/` exists. With that in mind, every request to an URL with the `/assets/` prefix will be handled by the `http.ServeFiles()` method as long as the requested resource is pointing to an existing file.
+
+A request to a nonexistent file returns “404 Not Found”.
+
+A request to a directory returns “403 Forbidden” to prevent directory listing attacks.
 
 ## Graceful Shutdown
 
