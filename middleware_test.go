@@ -81,3 +81,15 @@ func TestNotFound(t *testing.T) {
 
 	curl(t, "GET", "http://localhost:58304/notfound", []byte("404 page not found\n"))
 }
+
+func TestDirectoryListing(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Port = "58305"
+		defer router.Shutdown()
+		router.STATIC(".", "/assets")
+		router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:58305/assets/images/", []byte("Forbidden\n"))
+}
