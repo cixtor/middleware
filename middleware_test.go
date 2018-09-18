@@ -10,17 +10,19 @@ import (
 	"github.com/cixtor/middleware"
 )
 
-func curl(method string, target string) ([]byte, error) {
+func curl(t *testing.T, method string, target string, expected []byte) {
 	req, err := http.NewRequest(method, target, nil)
 
 	if err != nil {
-		return nil, err
+		t.Fatalf("http.NewRequest %s", err)
+		return
 	}
 
 	res, err := http.DefaultClient.Do(req)
 
 	if err != nil {
-		return nil, err
+		t.Fatalf("http.DefaultClient %s", err)
+		return
 	}
 
 	defer res.Body.Close()
@@ -28,54 +30,54 @@ func curl(method string, target string) ([]byte, error) {
 	data, err := ioutil.ReadAll(res.Body)
 
 	if err != nil {
-		return nil, err
+		t.Fatalf("ioutil.ReadAll %s", err)
+		return
 	}
 
-	return data, nil
+	if !bytes.Equal(data, expected) {
+		t.Fatalf("%s %s\nexpected: %q\nreceived: %q", method, target, expected, data)
+		return
+	}
 }
 
 func TestIndex(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Port = "58302"
+		defer router.Shutdown()
 		router.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World")
 		})
 		router.ListenAndServe()
 	}()
 
-	data, err := curl("GET", "http://localhost:58302/foobar")
-
-	if err != nil {
-		t.Fatalf("curl %s", err)
-		return
-	}
-
-	if !bytes.Equal(data, []byte("Hello World")) {
-		t.Fatal("GET / request failure")
-		return
-	}
+	curl(t, "GET", "http://localhost:58302/foobar", []byte("Hello World"))
 }
 
 func TestPOST(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Port = "58303"
+		defer router.Shutdown()
 		router.POST("/foobar", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World POST")
 		})
 		router.ListenAndServe()
 	}()
 
-	data, err := curl("POST", "http://localhost:58303/foobar")
+	curl(t, "POST", "http://localhost:58303/foobar", []byte("Hello World POST"))
+}
 
-	if err != nil {
-		t.Fatalf("curl %s", err)
-		return
-	}
+func TestNotFound(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Port = "58304"
+		defer router.Shutdown()
+		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World GET")
+		})
+		router.ListenAndServe()
+	}()
 
-	if !bytes.Equal(data, []byte("Hello World POST")) {
-		t.Fatal("POST /foobar request failure")
-		return
-	}
+	curl(t, "GET", "http://localhost:58304/notfound", []byte("404 page not found\n"))
 }
