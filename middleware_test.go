@@ -93,3 +93,17 @@ func TestDirectoryListing(t *testing.T) {
 
 	curl(t, "GET", "http://localhost:58305/assets/images/", []byte("Forbidden\n"))
 }
+
+func TestSingleParam(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Port = "58306"
+		defer router.Shutdown()
+		router.PUT("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello %s", middleware.Param(r, "name"))
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "PUT", "http://localhost:58306/hello/john", []byte("Hello john"))
+}
