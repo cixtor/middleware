@@ -163,7 +163,8 @@ func parseReqParams(r *http.Request, child *route) ([]httpParam, error) {
 
 	// Separate dynamic parameters from requested URL.
 	params := make([]httpParam, child.numParams)
-	rawParams := r.URL.Path[lendef+1 : lenreq]
+	shortURL := r.URL.Path[lendef:lenreq]
+	rawParams := strings.TrimLeft(shortURL, "/")
 	values := strings.Split(rawParams, "/")
 
 	if len(values) != child.numParams {

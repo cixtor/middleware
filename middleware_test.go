@@ -107,3 +107,35 @@ func TestSingleParam(t *testing.T) {
 
 	curl(t, "PUT", "http://localhost:58306/hello/john", []byte("Hello john"))
 }
+
+func TestMultiParam(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Port = "58307"
+		defer router.Shutdown()
+		router.PATCH("/:group/:section", func(w http.ResponseWriter, r *http.Request) {
+			group := middleware.Param(r, "group")
+			section := middleware.Param(r, "section")
+			fmt.Fprintf(w, "Page /%s/%s", group, section)
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "PATCH", "http://localhost:58307/account/info", []byte("Page /account/info"))
+}
+
+func TestMultiParamPrefix(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Port = "58308"
+		defer router.Shutdown()
+		router.DELETE("/foo/:group/:section", func(w http.ResponseWriter, r *http.Request) {
+			group := middleware.Param(r, "group")
+			section := middleware.Param(r, "section")
+			fmt.Fprintf(w, "Page /foo/%s/%s", group, section)
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "DELETE", "http://localhost:58308/foo/account/info", []byte("Page /foo/account/info"))
+}
