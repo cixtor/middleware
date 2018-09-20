@@ -139,3 +139,33 @@ func TestMultiParamPrefix(t *testing.T) {
 
 	curl(t, "DELETE", "http://localhost:58308/foo/account/info", []byte("Page /foo/account/info"))
 }
+
+func TestAllowAccess(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Port = "58309"
+		defer router.Shutdown()
+		router.AllowAccessExcept([]string{"[::1]"})
+		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:58309/", []byte("Forbidden\n"))
+}
+
+func TestDenyAccess(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Port = "58310"
+		defer router.Shutdown()
+		router.DenyAccessExcept([]string{"82.82.82.82"})
+		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:58310/", []byte("Forbidden\n"))
+}
