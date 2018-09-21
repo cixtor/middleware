@@ -35,6 +35,7 @@ type Middleware struct {
 	WriteTimeout      time.Duration
 	ShutdownTimeout   time.Duration
 	ReadHeaderTimeout time.Duration
+	chain             func(http.Handler) http.Handler
 	nodes             map[string][]*route
 	logger            *log.Logger
 	serverInstance    *http.Server
@@ -123,4 +124,49 @@ func (m *Middleware) ServeFiles(root string, prefix string) http.HandlerFunc {
 
 		handler.ServeHTTP(w, r)
 	})
+}
+
+// Use adds a middleware to the global middleware chain.
+//
+// The additional middlewares are executed in the same order as they are added
+// to the chain. For example, if you have wrappers to add security headers, a
+// session management system, and a file system cache policy, you can attach
+// them to the main router like this:
+//
+//   router.Use(headersMiddleware)
+//   router.Use(sessionMiddleware)
+//   router.Use(filesysMiddleware)
+//
+// They will run as follows:
+//
+//   headersMiddleware(
+//     sessionMiddleware(
+//       filesysMiddleware(
+//         func(http.ResponseWriter, *http.Request)
+//       )
+//     )
+//   )
+//
+// Use the following template to create more middlewares:
+//
+//   func foobar(next http.Handler) http.Handler {
+//       return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//           […]
+//           next.ServeHTTP(w, r)
+//       })
+//   }
+func (m *Middleware) Use(f func(http.Handler) http.Handler) {
+	if m.chain == nil {
+		m.chain = f
+		return
+	}
+
+	m.chain = compose(f, m.chain)
+}
+
+// compose follows the HTTP handler chain to execute additional middlewares.
+func compose(f, g func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return g(f(h))
+	}
 }

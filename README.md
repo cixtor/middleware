@@ -122,6 +122,45 @@ Test the connection using cURL `curl --cacert server.crt "https://middleware.tes
 
 Add a custom TLS configuration by passing a `&tls.Config{}` as the last parameter instead of `nil`.
 
+## Additional Middlewares
+
+Using a regular `http.Handler` you can attach more middlewares to the router:
+
+```golang
+var router = middleware.New()
+
+func foo(next http.Handler) http.Handler { … }
+func bar(next http.Handler) http.Handler { … }
+
+func main() {
+    router.Use(foo)
+    router.Use(bar)
+    router.GET("/", func(w http.ResponseWriter, r *http.Request) { … })
+    router.ListenAndServe()
+}
+```
+
+A regular `http.Handler` uses the following template:
+
+```golang
+func foobar(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        […]
+        next.ServeHTTP(w, r)
+    })
+}
+```
+
+When a request is matched and processed, the chain of middlewares is executed in the same order in which they were attached to the router. In the example above, the chain will result in the following function calls:
+
+```
+foo(
+    bar(
+        func(http.ResponseWriter, *http.Request)
+    )
+)
+```
+
 ## System Logs
 
 * Access logs are sent to `os.Stdout`

@@ -12,12 +12,15 @@ import (
 // communication with a proxy).
 func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
 	var node route
-	var parts []string
 	var usable []string
 
-	node.path = "/"
-	node.dispatcher = handle
-	parts = strings.Split(path, "/")
+	if m.chain != nil {
+		node.dispatcher = m.chain(handle).ServeHTTP
+	} else {
+		node.dispatcher = handle
+	}
+
+	parts := strings.Split(path, "/")
 
 	// Separate dynamic parameters from the static URL.
 	for _, section := range parts {
@@ -36,7 +39,7 @@ func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
 		node.numSections++
 	}
 
-	node.path += strings.Join(usable, "/")
+	node.path = "/" + strings.Join(usable, "/")
 
 	m.nodes[method] = append(m.nodes[method], &node)
 }
