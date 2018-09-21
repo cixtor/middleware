@@ -18,6 +18,8 @@ func curl(t *testing.T, method string, target string, expected []byte) {
 		return
 	}
 
+	req.Header.Set("User-Agent", "curl/7.54.0")
+
 	res, err := http.DefaultClient.Do(req)
 
 	if err != nil {
@@ -146,13 +148,13 @@ func TestAllowAccess(t *testing.T) {
 		router.Port = "58309"
 		defer router.Shutdown()
 		router.AllowAccessExcept([]string{"[::1]"})
-		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
+		router.OPTIONS("/admin/user/info", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World")
 		})
 		router.ListenAndServe()
 	}()
 
-	curl(t, "GET", "http://localhost:58309/", []byte("Forbidden\n"))
+	curl(t, "OPTIONS", "http://localhost:58309/admin/user/info", []byte("Forbidden\n"))
 }
 
 func TestDenyAccess(t *testing.T) {
@@ -161,11 +163,30 @@ func TestDenyAccess(t *testing.T) {
 		router.Port = "58310"
 		defer router.Shutdown()
 		router.DenyAccessExcept([]string{"82.82.82.82"})
-		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
+		router.OPTIONS("/admin/user/info", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World")
 		})
 		router.ListenAndServe()
 	}()
 
-	curl(t, "GET", "http://localhost:58310/", []byte("Forbidden\n"))
+	curl(t, "OPTIONS", "http://localhost:58310/admin/user/info", []byte("Forbidden\n"))
+}
+
+func TestServeFiles(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Port = "58311"
+		defer router.Shutdown()
+		router.STATIC(".", "/cdn")
+		router.ListenAndServe()
+	}()
+
+	data, err := ioutil.ReadFile("LICENSE.md")
+
+	if err != nil {
+		t.Fatalf("cannot read LICENSE.md %s", err)
+		return
+	}
+
+	curl(t, "GET", "http://localhost:58311/cdn/LICENSE.md", data)
 }
