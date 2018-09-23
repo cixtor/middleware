@@ -33,6 +33,16 @@ func JSON(w http.ResponseWriter, r *http.Request, v interface{}) {
 	}
 }
 
+// HTML responds to a request with an arbitrary string as HTML.
+func HTML(w http.ResponseWriter, r *http.Request, v string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	if _, err := w.Write([]byte(v)); err != nil {
+		w.Write([]byte(err.Error()))
+		return
+	}
+}
+
 // func Write()
 
 // remoteAddr returns the IP address of the origin of the request.
