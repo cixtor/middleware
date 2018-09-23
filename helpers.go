@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 )
@@ -21,6 +22,18 @@ func Param(r *http.Request, key string) string {
 
 	return ""
 }
+
+// JSON responds to a request with arbitrary data in JSON format.
+func JSON(w http.ResponseWriter, r *http.Request, v interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		w.Write([]byte(err.Error()))
+		return
+	}
+}
+
+// func Write()
 
 // remoteAddr returns the IP address of the origin of the request.
 //
