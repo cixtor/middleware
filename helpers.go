@@ -53,7 +53,15 @@ func HTML(w http.ResponseWriter, r *http.Request, v string) {
 	}
 }
 
-// func Write()
+// Data responds to a request with an arbitrary slice of bytes.
+func Data(w http.ResponseWriter, r *http.Request, v []byte) {
+	w.Header().Set("Content-Type", "application/octet-stream")
+
+	if _, err := w.Write(v); err != nil {
+		w.Write([]byte(err.Error()))
+		return
+	}
+}
 
 // remoteAddr returns the IP address of the origin of the request.
 //
