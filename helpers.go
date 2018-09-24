@@ -23,6 +23,16 @@ func Param(r *http.Request, key string) string {
 	return ""
 }
 
+// Text responds to a request with a string in plain text.
+func Text(w http.ResponseWriter, r *http.Request, v string) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	if _, err := w.Write([]byte(v)); err != nil {
+		w.Write([]byte(err.Error()))
+		return
+	}
+}
+
 // JSON responds to a request with arbitrary data in JSON format.
 func JSON(w http.ResponseWriter, r *http.Request, v interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
