@@ -24,43 +24,27 @@ func Param(r *http.Request, key string) string {
 }
 
 // Text responds to a request with a string in plain text.
-func Text(w http.ResponseWriter, r *http.Request, v string) {
+func Text(w http.ResponseWriter, r *http.Request, v string) (int, error) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-
-	if _, err := w.Write([]byte(v)); err != nil {
-		w.Write([]byte(err.Error()))
-		return
-	}
+	return w.Write([]byte(v))
 }
 
 // JSON responds to a request with arbitrary data in JSON format.
-func JSON(w http.ResponseWriter, r *http.Request, v interface{}) {
+func JSON(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		w.Write([]byte(err.Error()))
-		return
-	}
+	return json.NewEncoder(w).Encode(v)
 }
 
 // HTML responds to a request with an arbitrary string as HTML.
-func HTML(w http.ResponseWriter, r *http.Request, v string) {
+func HTML(w http.ResponseWriter, r *http.Request, v string) (int, error) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	if _, err := w.Write([]byte(v)); err != nil {
-		w.Write([]byte(err.Error()))
-		return
-	}
+	return w.Write([]byte(v))
 }
 
 // Data responds to a request with an arbitrary slice of bytes.
-func Data(w http.ResponseWriter, r *http.Request, v []byte) {
+func Data(w http.ResponseWriter, r *http.Request, v []byte) (int, error) {
 	w.Header().Set("Content-Type", "application/octet-stream")
-
-	if _, err := w.Write(v); err != nil {
-		w.Write([]byte(err.Error()))
-		return
-	}
+	return w.Write(v)
 }
 
 // remoteAddr returns the IP address of the origin of the request.
