@@ -53,7 +53,6 @@ type route struct {
 	path            string
 	params          []string
 	numParams       int
-	numSections     int
 	dispatcher      http.HandlerFunc
 	isStaticHandler bool
 }

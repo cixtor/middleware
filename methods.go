@@ -30,13 +30,11 @@ func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
 
 		if len(section) > 1 && section[0] == ':' {
 			node.params = append(node.params, section[1:])
-			node.numSections++
 			node.numParams++
 			continue
 		}
 
 		usable = append(usable, section)
-		node.numSections++
 	}
 
 	node.path = "/" + strings.Join(usable, "/")
