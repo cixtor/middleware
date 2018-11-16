@@ -11,8 +11,8 @@ import (
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
 func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
-	var node route
-	var usable []string
+	node := route{path: path}
+	parts := strings.Split(path, "/")
 
 	if m.chain != nil {
 		node.dispatcher = m.chain(handle).ServeHTTP
@@ -20,24 +20,29 @@ func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
 		node.dispatcher = handle
 	}
 
-	parts := strings.Split(path, "/")
-
-	// Separate dynamic parameters from the static URL.
-	for _, section := range parts {
-		if section == "" {
+	for idx, section := range parts {
+		if section == "" && idx == 0 {
+			node.parts = append(node.parts, rpart{
+				name: "<root>",
+				root: true,
+			})
 			continue
 		}
 
-		if len(section) > 1 && section[0] == ':' {
-			node.params = append(node.params, section[1:])
-			node.numParams++
+		if section == "" && idx > 0 {
 			continue
 		}
 
-		usable = append(usable, section)
+		if section[0] == ':' {
+			node.parts = append(node.parts, rpart{
+				name: section,
+				dyna: true,
+			})
+			continue
+		}
+
+		node.parts = append(node.parts, rpart{name: section})
 	}
-
-	node.path = "/" + strings.Join(usable, "/")
 
 	m.nodes[method] = append(m.nodes[method], &node)
 }
@@ -102,7 +107,7 @@ func (m *Middleware) STATIC(root string, prefix string) {
 
 	node.path = prefix
 	node.isStaticHandler = true
-	node.params = []string{"filepath"}
+	node.parts = []rpart{rpart{name: "filepath"}}
 	node.dispatcher = m.ServeFiles(root, prefix)
 
 	m.nodes["GET"] = append(m.nodes["GET"], &node)

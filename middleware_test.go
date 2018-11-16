@@ -142,6 +142,20 @@ func TestMultiParamPrefix(t *testing.T) {
 	curl(t, "DELETE", "http://localhost:58308/foo/account/info", []byte("Page /foo/account/info"))
 }
 
+func TestComplexParam(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Port = "58312"
+		defer router.Shutdown()
+		router.PUT("/account/:name/info", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello %s", middleware.Param(r, "name"))
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "PUT", "http://localhost:58312/account/john/info", []byte("Hello john"))
+}
+
 func TestAllowAccess(t *testing.T) {
 	go func() {
 		router := middleware.New()

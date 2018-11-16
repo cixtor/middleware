@@ -51,10 +51,26 @@ type Middleware struct {
 // every match in the URL no matter if the named parameters do not match.
 type route struct {
 	path            string
-	params          []string
+	parts           []rpart
 	numParams       int
 	dispatcher      http.HandlerFunc
 	isStaticHandler bool
+}
+
+// rpart represents each part of the route.
+//
+// Example:
+//
+//   /lorem/:ipsum/dolor -> []section{
+//     section{name:"<root>", dyna: false, root: true},
+//     section{name:"lorem",  dyna: false, root: false},
+//     section{name:":ipsum", dyna: true,  root: false},
+//     section{name:"dolor",  dyna: false, root: false},
+//   }
+type rpart struct {
+	name string
+	dyna bool
+	root bool
 }
 
 // httpParam represents a single parameter in the URL.
