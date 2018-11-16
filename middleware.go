@@ -50,11 +50,14 @@ type Middleware struct {
 // another property to force the ServeHTTP method to return immediately for
 // every match in the URL no matter if the named parameters do not match.
 type route struct {
-	path            string
-	parts           []rpart
-	numParams       int
-	dispatcher      http.HandlerFunc
-	isStaticHandler bool
+	// path is the raw URL: `/lorem/:ipsum/dolor`
+	path string
+	// parts is a list of sections representing the URL.
+	parts []rpart
+	// glob is true if the route has a global catcher.
+	glob bool
+	// dispatcher is the HTTP handler function for the route.
+	dispatcher http.HandlerFunc
 }
 
 // rpart represents each part of the route.
@@ -68,8 +71,11 @@ type route struct {
 //     section{name:"dolor",  dyna: false, root: false},
 //   }
 type rpart struct {
+	// name is the raw text in the URL.
 	name string
+	// dyna is short for “dynamic”; true if `/^:\S+/` false otherwise
 	dyna bool
+	// root is true if the route part is the first in the list.
 	root bool
 }
 
@@ -132,7 +138,21 @@ func (m *Middleware) ServeFiles(root string, prefix string) http.HandlerFunc {
 	handler := http.StripPrefix(prefix, fs)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path[len(r.URL.Path)-1] == '/' {
+		var err error
+		var raw string
+		var fifo os.FileInfo
+
+		// convert URL into file system path.
+		raw = root + r.URL.Path[len(prefix):]
+
+		if fifo, err = os.Stat(raw); err != nil {
+			// requested resource does not exists; return 404 Not Found
+			http.Error(w, http.StatusText(404), http.StatusNotFound)
+			return
+		}
+
+		if fifo.IsDir() {
+			// requested resource is a directory; return 403 Forbidden
 			http.Error(w, http.StatusText(403), http.StatusForbidden)
 			return
 		}

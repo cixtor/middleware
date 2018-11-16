@@ -93,7 +93,12 @@ func TestDirectoryListing(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "GET", "http://localhost:58305/assets/images/", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:58305/assets", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:58305/assets/", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:58305/assets/.git", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:58305/assets/.git/", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:58305/assets/.git/objects", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:58305/assets/.git/objects/", []byte("Forbidden\n"))
 }
 
 func TestSingleParam(t *testing.T) {

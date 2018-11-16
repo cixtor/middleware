@@ -33,6 +33,11 @@ func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
 			continue
 		}
 
+		if section == "*" {
+			node.glob = true
+			continue
+		}
+
 		if section[0] == ':' {
 			node.parts = append(node.parts, rpart{
 				name: section,
@@ -102,13 +107,12 @@ func (m *Middleware) OPTIONS(path string, handle http.HandlerFunc) {
 // served by a cache system and thanks to the design of this library you can
 // put one in the middle of your requests as easy as you attach normal HTTP
 // handlers.
-func (m *Middleware) STATIC(root string, prefix string) {
+func (m *Middleware) STATIC(folder string, urlPrefix string) {
 	var node route
 
-	node.path = prefix
-	node.isStaticHandler = true
-	node.parts = []rpart{rpart{name: "filepath"}}
-	node.dispatcher = m.ServeFiles(root, prefix)
+	node.dispatcher = m.ServeFiles(folder, urlPrefix)
+	node.path = urlPrefix
+	node.glob = true
 
 	m.nodes["GET"] = append(m.nodes["GET"], &node)
 	m.nodes["POST"] = append(m.nodes["POST"], &node)

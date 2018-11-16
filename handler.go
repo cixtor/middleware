@@ -71,9 +71,12 @@ func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 	var params []httpParam
 
 	for _, child := range children {
-		params, err = parseReqParams(r, child)
+		if child.glob && strings.HasPrefix(r.URL.Path, child.path) {
+			child.dispatcher(w, r)
+			return
+		}
 
-		if err != nil {
+		if params, err = parseReqParams(r, child); err != nil {
 			continue
 		}
 
