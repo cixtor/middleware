@@ -29,6 +29,7 @@ const denyAccessExcept = 0x32afb2
 type Middleware struct {
 	Host              string
 	Port              string
+	Logger            *log.Logger
 	NotFound          http.Handler
 	IdleTimeout       time.Duration
 	ReadTimeout       time.Duration
@@ -37,7 +38,6 @@ type Middleware struct {
 	ReadHeaderTimeout time.Duration
 	chain             func(http.Handler) http.Handler
 	nodes             map[string][]*route
-	logger            *log.Logger
 	serverInstance    *http.Server
 	serverShutdown    chan bool
 	allowedAddresses  []string
@@ -96,7 +96,7 @@ func New() *Middleware {
 	m := new(Middleware)
 
 	m.nodes = make(map[string][]*route)
-	m.logger = log.New(os.Stdout, "", log.LstdFlags)
+	m.Logger = log.New(os.Stdout, "", log.LstdFlags)
 
 	return m
 }
@@ -116,7 +116,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	m.handleRequest(&writer, r)
 
-	m.logger.Printf(
+	m.Logger.Printf(
 		"%s %s \"%s %s %s\" %d %d \"%s\" %v",
 		r.Host,
 		r.RemoteAddr,

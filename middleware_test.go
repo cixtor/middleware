@@ -1,14 +1,20 @@
 package middleware_test
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"testing"
 
 	"github.com/cixtor/middleware"
 )
+
+var buffer = bytes.Buffer{}
+var devnul = bufio.NewWriter(&buffer)
+var logger = log.New(devnul, "", log.LstdFlags)
 
 func curl(t *testing.T, method string, target string, expected []byte) {
 	req, err := http.NewRequest(method, target, nil)
@@ -45,6 +51,7 @@ func curl(t *testing.T, method string, target string, expected []byte) {
 func TestIndex(t *testing.T) {
 	go func() {
 		router := middleware.New()
+		router.Logger = logger
 		router.Port = "58302"
 		defer router.Shutdown()
 		router.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +66,7 @@ func TestIndex(t *testing.T) {
 func TestPOST(t *testing.T) {
 	go func() {
 		router := middleware.New()
+		router.Logger = logger
 		router.Port = "58303"
 		defer router.Shutdown()
 		router.POST("/foobar", func(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +81,7 @@ func TestPOST(t *testing.T) {
 func TestNotFound(t *testing.T) {
 	go func() {
 		router := middleware.New()
+		router.Logger = logger
 		router.Port = "58304"
 		defer router.Shutdown()
 		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +96,7 @@ func TestNotFound(t *testing.T) {
 func TestDirectoryListing(t *testing.T) {
 	go func() {
 		router := middleware.New()
+		router.Logger = logger
 		router.Port = "58305"
 		defer router.Shutdown()
 		router.STATIC(".", "/assets")
@@ -104,6 +114,7 @@ func TestDirectoryListing(t *testing.T) {
 func TestSingleParam(t *testing.T) {
 	go func() {
 		router := middleware.New()
+		router.Logger = logger
 		router.Port = "58306"
 		defer router.Shutdown()
 		router.PUT("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
@@ -118,6 +129,7 @@ func TestSingleParam(t *testing.T) {
 func TestMultiParam(t *testing.T) {
 	go func() {
 		router := middleware.New()
+		router.Logger = logger
 		router.Port = "58307"
 		defer router.Shutdown()
 		router.PATCH("/:group/:section", func(w http.ResponseWriter, r *http.Request) {
@@ -134,6 +146,7 @@ func TestMultiParam(t *testing.T) {
 func TestMultiParamPrefix(t *testing.T) {
 	go func() {
 		router := middleware.New()
+		router.Logger = logger
 		router.Port = "58308"
 		defer router.Shutdown()
 		router.DELETE("/foo/:group/:section", func(w http.ResponseWriter, r *http.Request) {
@@ -150,6 +163,7 @@ func TestMultiParamPrefix(t *testing.T) {
 func TestComplexParam(t *testing.T) {
 	go func() {
 		router := middleware.New()
+		router.Logger = logger
 		router.Port = "58312"
 		defer router.Shutdown()
 		router.PUT("/account/:name/info", func(w http.ResponseWriter, r *http.Request) {
@@ -164,6 +178,7 @@ func TestComplexParam(t *testing.T) {
 func TestAllowAccess(t *testing.T) {
 	go func() {
 		router := middleware.New()
+		router.Logger = logger
 		router.Port = "58309"
 		defer router.Shutdown()
 		router.AllowAccessExcept([]string{"[::1]"})
@@ -179,6 +194,7 @@ func TestAllowAccess(t *testing.T) {
 func TestDenyAccess(t *testing.T) {
 	go func() {
 		router := middleware.New()
+		router.Logger = logger
 		router.Port = "58310"
 		defer router.Shutdown()
 		router.DenyAccessExcept([]string{"82.82.82.82"})
@@ -194,6 +210,7 @@ func TestDenyAccess(t *testing.T) {
 func TestServeFiles(t *testing.T) {
 	go func() {
 		router := middleware.New()
+		router.Logger = logger
 		router.Port = "58311"
 		defer router.Shutdown()
 		router.STATIC(".", "/cdn")

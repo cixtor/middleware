@@ -37,7 +37,7 @@ func (m *Middleware) startWebServer(f func()) {
 	}
 
 	go func() {
-		m.logger.Println("listening on", address)
+		m.Logger.Println("listening on", address)
 		f() /* m.ListenAndServe OR m.ListenAndServeTLS */
 	}()
 
@@ -56,11 +56,11 @@ func (m *Middleware) gracefulServerShutdown() {
 	defer cancel()
 
 	if err := m.serverInstance.Shutdown(ctx); err != nil {
-		m.logger.Println("sigint;", err)
+		m.Logger.Println("sigint;", err)
 		return
 	}
 
-	m.logger.Println("server shutdown")
+	m.Logger.Println("server shutdown")
 }
 
 // ListenAndServe listens on the TCP network address srv.Addr
@@ -73,7 +73,7 @@ func (m *Middleware) ListenAndServe() {
 		err := m.serverInstance.ListenAndServe()
 
 		if err != nil {
-			m.logger.Fatal(err)
+			m.Logger.Fatal(err)
 		}
 	})
 }
@@ -90,7 +90,7 @@ func (m *Middleware) ListenAndServeTLS(certFile string, keyFile string, cfg *tls
 		err := m.serverInstance.ListenAndServeTLS(certFile, keyFile)
 
 		if err != nil {
-			m.logger.Fatal(err)
+			m.Logger.Fatal(err)
 		}
 	})
 }
