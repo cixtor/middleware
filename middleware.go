@@ -126,7 +126,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writer.Status,
 		writer.Length,
 		r.Header.Get("User-Agent"),
-		time.Now().Sub(start),
+		time.Since(start),
 	)
 }
 
