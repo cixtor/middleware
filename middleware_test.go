@@ -226,3 +226,18 @@ func TestServeFiles(t *testing.T) {
 
 	curl(t, "GET", "http://localhost:58311/cdn/LICENSE.md", data)
 }
+
+func TestTrailingSlash(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Port = "58313"
+		defer router.Shutdown()
+		router.GET("/hello/world/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:58313/hello/world/", []byte("Hello World"))
+}
