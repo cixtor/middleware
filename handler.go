@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+var nomatch = errors.New("route doesn’t match")
+
 // handleRequest responds to an HTTP request.
 //
 // The function selects the HTTP handler by traversing a tree that contains a
@@ -67,60 +69,66 @@ func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var err error
-	var params []httpParam
+	// iterate against the routes to find a handler.
+	child, params, err := m.findHandler(r, children)
 
-	for _, child := range children {
-		if r.URL.Path == child.path {
-			child.dispatcher(w, r)
+	// send “404 Not Found” if there is no handler.
+	if err != nil || child == nil {
+		if m.NotFound != nil {
+			m.NotFound.ServeHTTP(w, r)
 			return
 		}
 
-		if child.glob && strings.HasPrefix(r.URL.Path, child.path) {
-			child.dispatcher(w, r)
-			return
-		}
-
-		if params, err = parseReqParams(r, child); err != nil {
-			continue
-		}
-
-		if len(params) == 0 {
-			child.dispatcher(w, r)
-			return
-		}
-
-		child.dispatcher(
-			w,
-			r.WithContext(
-				context.WithValue(
-					r.Context(),
-					paramsKey,
-					params,
-				),
-			),
-		)
+		http.NotFound(w, r)
 		return
 	}
 
-	if m.NotFound != nil {
-		m.NotFound.ServeHTTP(w, r)
-		return
+	if len(params) > 0 {
+		// save params in the request context.
+		r = r.WithContext(context.WithValue(
+			r.Context(),
+			paramsKey,
+			params,
+		))
 	}
 
-	http.NotFound(w, r)
+	child.dispatcher(w, r)
 }
 
-// parseReqParams returns a list of request parameters (which may be empty) or
-// an error if the requested URL doesn’t match the URL defined in the Btree.
-func parseReqParams(r *http.Request, child *route) ([]httpParam, error) {
+// findHandler
+func (m *Middleware) findHandler(r *http.Request, children []*route) (*route, []httpParam, error) {
+	for _, child := range children {
+		// side-by-side match; no params.
+		if r.URL.Path == child.path {
+			return child, []httpParam{}, nil
+		}
+
+		// global match; match everything with the same prefix.
+		if child.glob && strings.HasPrefix(r.URL.Path, child.path) {
+			return child, []httpParam{}, nil
+		}
+
+		params, err := m.findHandlerParams(r, child)
+
+		if err != nil {
+			return nil, []httpParam{}, err
+		}
+
+		return child, params, nil
+	}
+
+	return nil, []httpParam{}, nomatch
+}
+
+// findHandlerParams
+func (m *Middleware) findHandlerParams(r *http.Request, child *route) ([]httpParam, error) {
 	var incorrect bool
 	var params []httpParam
 
 	steps := strings.Split(r.URL.Path, "/")
 
 	if len(steps) != len(child.parts) {
-		return nil, errors.New("route doesn’t match")
+		return nil, nomatch
 	}
 
 	for idx, part := range child.parts {
@@ -143,7 +151,7 @@ func parseReqParams(r *http.Request, child *route) ([]httpParam, error) {
 	}
 
 	if incorrect {
-		return nil, errors.New("route doesn’t match")
+		return nil, nomatch
 	}
 
 	return params, nil
