@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// errNoMatch is an error for when nothing matches.
-var errNoMatch = errors.New("route doesn’t match")
+// errNoMatch represents a simple matching error.
+var errNoMatch = errors.New("no matching route")
 
 // handleRequest responds to an HTTP request.
 //
@@ -119,7 +119,6 @@ func (m *Middleware) findHandler(r *http.Request, children []route) (route, []ht
 
 // findHandlerParams
 func (m *Middleware) findHandlerParams(r *http.Request, child route) ([]httpParam, error) {
-	var incorrect bool
 	var params []httpParam
 
 	steps := strings.Split(r.URL.Path, "/")
@@ -141,14 +140,10 @@ func (m *Middleware) findHandlerParams(r *http.Request, child route) ([]httpPara
 			continue
 		}
 
+		// reset params; invalid route.
 		if steps[idx] != part.name {
-			incorrect = true
-			break
+			return nil, errNoMatch
 		}
-	}
-
-	if incorrect {
-		return nil, errNoMatch
 	}
 
 	return params, nil
