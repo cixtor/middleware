@@ -37,7 +37,7 @@ type Middleware struct {
 	ShutdownTimeout   time.Duration
 	ReadHeaderTimeout time.Duration
 	chain             func(http.Handler) http.Handler
-	nodes             map[string][]*route
+	nodes             map[string][]route
 	serverInstance    *http.Server
 	serverShutdown    chan bool
 	allowedAddresses  []string
@@ -95,7 +95,7 @@ var paramsKey = contextKey("MiddlewareParameter")
 func New() *Middleware {
 	m := new(Middleware)
 
-	m.nodes = make(map[string][]*route)
+	m.nodes = make(map[string][]route)
 	m.Logger = log.New(os.Stdout, "", log.LstdFlags)
 
 	return m

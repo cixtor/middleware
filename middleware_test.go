@@ -256,3 +256,22 @@ func TestTrailingSlash(t *testing.T) {
 
 	curl(t, "GET", "http://localhost:58313/hello/world/", []byte("Hello World"))
 }
+
+func TestMultipleRoutes(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Port = "58315"
+		defer router.Shutdown()
+		router.GET("/hello/world/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		router.GET("/lorem/ipsum/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Lorem Ipsum")
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:58315/hello/world/", []byte("Hello World"))
+	curl(t, "GET", "http://localhost:58315/lorem/ipsum/", []byte("Lorem Ipsum"))
+}

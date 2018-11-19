@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-var nomatch = errors.New("route doesn’t match")
+// errNoMatch is an error for when nothing matches.
+var errNoMatch = errors.New("route doesn’t match")
 
 // handleRequest responds to an HTTP request.
 //
@@ -73,7 +74,7 @@ func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 	child, params, err := m.findHandler(r, children)
 
 	// send “404 Not Found” if there is no handler.
-	if err != nil || child == nil {
+	if err != nil || child.dispatcher == nil {
 		if m.NotFound != nil {
 			m.NotFound.ServeHTTP(w, r)
 			return
@@ -96,7 +97,7 @@ func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 // findHandler
-func (m *Middleware) findHandler(r *http.Request, children []*route) (*route, []httpParam, error) {
+func (m *Middleware) findHandler(r *http.Request, children []route) (route, []httpParam, error) {
 	for _, child := range children {
 		// side-by-side match; no params.
 		if r.URL.Path == child.path {
@@ -108,27 +109,23 @@ func (m *Middleware) findHandler(r *http.Request, children []*route) (*route, []
 			return child, []httpParam{}, nil
 		}
 
-		params, err := m.findHandlerParams(r, child)
-
-		if err != nil {
-			return nil, []httpParam{}, err
+		if params, err := m.findHandlerParams(r, child); err == nil {
+			return child, params, nil
 		}
-
-		return child, params, nil
 	}
 
-	return nil, []httpParam{}, nomatch
+	return route{}, []httpParam{}, errNoMatch
 }
 
 // findHandlerParams
-func (m *Middleware) findHandlerParams(r *http.Request, child *route) ([]httpParam, error) {
+func (m *Middleware) findHandlerParams(r *http.Request, child route) ([]httpParam, error) {
 	var incorrect bool
 	var params []httpParam
 
 	steps := strings.Split(r.URL.Path, "/")
 
 	if len(steps) != len(child.parts) {
-		return nil, nomatch
+		return nil, errNoMatch
 	}
 
 	for idx, part := range child.parts {
@@ -151,7 +148,7 @@ func (m *Middleware) findHandlerParams(r *http.Request, child *route) ([]httpPar
 	}
 
 	if incorrect {
-		return nil, nomatch
+		return nil, errNoMatch
 	}
 
 	return params, nil

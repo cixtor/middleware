@@ -49,7 +49,7 @@ func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
 		node.parts = append(node.parts, rpart{name: section})
 	}
 
-	m.nodes[method] = append(m.nodes[method], &node)
+	m.nodes[method] = append(m.nodes[method], node)
 }
 
 // GET requests a representation of the specified resource.
@@ -114,6 +114,6 @@ func (m *Middleware) STATIC(folder string, urlPrefix string) {
 	node.path = urlPrefix
 	node.glob = true
 
-	m.nodes["GET"] = append(m.nodes["GET"], &node)
-	m.nodes["POST"] = append(m.nodes["POST"], &node)
+	m.nodes["GET"] = append(m.nodes["GET"], node)
+	m.nodes["POST"] = append(m.nodes["POST"], node)
 }
