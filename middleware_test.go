@@ -49,7 +49,7 @@ func TestIndex(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58302"
+		router.Port = "60302"
 		defer router.Shutdown()
 		router.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World")
@@ -57,14 +57,14 @@ func TestIndex(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "GET", "http://localhost:58302/foobar", []byte("Hello World"))
+	curl(t, "GET", "http://localhost:60302/foobar", []byte("Hello World"))
 }
 
 func TestPOST(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58303"
+		router.Port = "60303"
 		defer router.Shutdown()
 		router.POST("/foobar", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World POST")
@@ -72,14 +72,14 @@ func TestPOST(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "POST", "http://localhost:58303/foobar", []byte("Hello World POST"))
+	curl(t, "POST", "http://localhost:60303/foobar", []byte("Hello World POST"))
 }
 
 func TestNotFound(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58304"
+		router.Port = "60304"
 		defer router.Shutdown()
 		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World GET")
@@ -87,14 +87,14 @@ func TestNotFound(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "GET", "http://localhost:58304/notfound", []byte("404 page not found\n"))
+	curl(t, "GET", "http://localhost:60304/notfound", []byte("404 page not found\n"))
 }
 
 func TestNotFoundSimilar(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58314"
+		router.Port = "60314"
 		defer router.Shutdown()
 		router.GET("/lorem/ipsum/dolor", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World GET")
@@ -102,32 +102,32 @@ func TestNotFoundSimilar(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "GET", "http://localhost:58314/dolor/ipsum/lorem", []byte("404 page not found\n"))
+	curl(t, "GET", "http://localhost:60314/dolor/ipsum/lorem", []byte("404 page not found\n"))
 }
 
 func TestDirectoryListing(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58305"
+		router.Port = "60305"
 		defer router.Shutdown()
 		router.STATIC(".", "/assets")
 		router.ListenAndServe()
 	}()
 
-	curl(t, "GET", "http://localhost:58305/assets", []byte("Forbidden\n"))
-	curl(t, "GET", "http://localhost:58305/assets/", []byte("Forbidden\n"))
-	curl(t, "GET", "http://localhost:58305/assets/.git", []byte("Forbidden\n"))
-	curl(t, "GET", "http://localhost:58305/assets/.git/", []byte("Forbidden\n"))
-	curl(t, "GET", "http://localhost:58305/assets/.git/objects", []byte("Forbidden\n"))
-	curl(t, "GET", "http://localhost:58305/assets/.git/objects/", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:60305/assets", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:60305/assets/", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:60305/assets/.git", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:60305/assets/.git/", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:60305/assets/.git/objects", []byte("Forbidden\n"))
+	curl(t, "GET", "http://localhost:60305/assets/.git/objects/", []byte("Forbidden\n"))
 }
 
 func TestSingleParam(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58306"
+		router.Port = "60306"
 		defer router.Shutdown()
 		router.PUT("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello %s", middleware.Param(r, "name"))
@@ -135,14 +135,14 @@ func TestSingleParam(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "PUT", "http://localhost:58306/hello/john", []byte("Hello john"))
+	curl(t, "PUT", "http://localhost:60306/hello/john", []byte("Hello john"))
 }
 
 func TestMultiParam(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58307"
+		router.Port = "60307"
 		defer router.Shutdown()
 		router.PATCH("/:group/:section", func(w http.ResponseWriter, r *http.Request) {
 			group := middleware.Param(r, "group")
@@ -152,14 +152,14 @@ func TestMultiParam(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "PATCH", "http://localhost:58307/account/info", []byte("Page /account/info"))
+	curl(t, "PATCH", "http://localhost:60307/account/info", []byte("Page /account/info"))
 }
 
 func TestMultiParamPrefix(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58308"
+		router.Port = "60308"
 		defer router.Shutdown()
 		router.DELETE("/foo/:group/:section", func(w http.ResponseWriter, r *http.Request) {
 			group := middleware.Param(r, "group")
@@ -169,14 +169,14 @@ func TestMultiParamPrefix(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "DELETE", "http://localhost:58308/foo/account/info", []byte("Page /foo/account/info"))
+	curl(t, "DELETE", "http://localhost:60308/foo/account/info", []byte("Page /foo/account/info"))
 }
 
 func TestComplexParam(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58312"
+		router.Port = "60312"
 		defer router.Shutdown()
 		router.PUT("/account/:name/info", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello %s", middleware.Param(r, "name"))
@@ -184,14 +184,14 @@ func TestComplexParam(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "PUT", "http://localhost:58312/account/john/info", []byte("Hello john"))
+	curl(t, "PUT", "http://localhost:60312/account/john/info", []byte("Hello john"))
 }
 
 func TestAllowAccess(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58309"
+		router.Port = "60309"
 		defer router.Shutdown()
 		router.AllowAccessExcept([]string{"[::1]"})
 		router.OPTIONS("/admin/user/info", func(w http.ResponseWriter, r *http.Request) {
@@ -200,14 +200,14 @@ func TestAllowAccess(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "OPTIONS", "http://localhost:58309/admin/user/info", []byte("Forbidden\n"))
+	curl(t, "OPTIONS", "http://localhost:60309/admin/user/info", []byte("Forbidden\n"))
 }
 
 func TestDenyAccess(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58310"
+		router.Port = "60310"
 		defer router.Shutdown()
 		router.DenyAccessExcept([]string{"82.82.82.82"})
 		router.OPTIONS("/admin/user/info", func(w http.ResponseWriter, r *http.Request) {
@@ -216,14 +216,14 @@ func TestDenyAccess(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "OPTIONS", "http://localhost:58310/admin/user/info", []byte("Forbidden\n"))
+	curl(t, "OPTIONS", "http://localhost:60310/admin/user/info", []byte("Forbidden\n"))
 }
 
 func TestServeFiles(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58311"
+		router.Port = "60311"
 		defer router.Shutdown()
 		router.STATIC(".", "/cdn")
 		router.ListenAndServe()
@@ -236,14 +236,14 @@ func TestServeFiles(t *testing.T) {
 		return
 	}
 
-	curl(t, "GET", "http://localhost:58311/cdn/LICENSE.md", data)
+	curl(t, "GET", "http://localhost:60311/cdn/LICENSE.md", data)
 }
 
 func TestTrailingSlash(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58313"
+		router.Port = "60313"
 		defer router.Shutdown()
 		router.GET("/hello/world/", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World")
@@ -251,14 +251,14 @@ func TestTrailingSlash(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "GET", "http://localhost:58313/hello/world/", []byte("Hello World"))
+	curl(t, "GET", "http://localhost:60313/hello/world/", []byte("Hello World"))
 }
 
 func TestMultipleRoutes(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.Logger = logger
-		router.Port = "58315"
+		router.Port = "60315"
 		defer router.Shutdown()
 		router.GET("/hello/world/", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World")
@@ -269,6 +269,6 @@ func TestMultipleRoutes(t *testing.T) {
 		router.ListenAndServe()
 	}()
 
-	curl(t, "GET", "http://localhost:58315/hello/world/", []byte("Hello World"))
-	curl(t, "GET", "http://localhost:58315/lorem/ipsum/", []byte("Lorem Ipsum"))
+	curl(t, "GET", "http://localhost:60315/hello/world/", []byte("Hello World"))
+	curl(t, "GET", "http://localhost:60315/lorem/ipsum/", []byte("Lorem Ipsum"))
 }
