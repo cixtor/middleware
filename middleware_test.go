@@ -17,33 +17,30 @@ var devnul = bufio.NewWriter(&buffer)
 var logger = log.New(devnul, "", log.LstdFlags)
 
 func curl(t *testing.T, method string, target string, expected []byte) {
-	req, err := http.NewRequest(method, target, nil)
+	var err error
+	var out []byte
+	var req *http.Request
+	var res *http.Response
 
-	if err != nil {
+	if req, err = http.NewRequest(method, target, nil); err != nil {
 		t.Fatalf("http.NewRequest %s", err)
 		return
 	}
 
-	req.Header.Set("User-Agent", "curl/7.54.0")
-
-	res, err := http.DefaultClient.Do(req)
-
-	if err != nil {
+	if res, err = http.DefaultClient.Do(req); err != nil {
 		t.Fatalf("http.DefaultClient %s", err)
 		return
 	}
 
 	defer res.Body.Close()
 
-	data, err := ioutil.ReadAll(res.Body)
-
-	if err != nil {
+	if out, err = ioutil.ReadAll(res.Body); err != nil {
 		t.Fatalf("ioutil.ReadAll %s", err)
 		return
 	}
 
-	if !bytes.Equal(data, expected) {
-		t.Fatalf("%s %s\nexpected: %q\nreceived: %q", method, target, expected, data)
+	if !bytes.Equal(out, expected) {
+		t.Fatalf("%s %s\nexpected: %q\nreceived: %q", method, target, expected, out)
 		return
 	}
 }
