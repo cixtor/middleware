@@ -323,7 +323,8 @@ func (m *Middleware) findHandler(r *http.Request, children []route) (route, []ht
 func (m *Middleware) findHandlerParams(r *http.Request, child route) ([]httpParam, error) {
 	var params []httpParam
 
-	steps := strings.Split(r.URL.Path, "/")
+	query := strings.TrimRight(r.URL.Path, "/")
+	steps := strings.Split(query, "/")
 
 	if len(steps) != len(child.parts) {
 		return nil, errNoMatch

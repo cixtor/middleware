@@ -75,6 +75,21 @@ func TestPOST(t *testing.T) {
 	curl(t, "POST", "http://localhost:60303/foobar", []byte("Hello World POST"))
 }
 
+func TestPOSTComplex(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Port = "60316"
+		defer router.Shutdown()
+		router.POST("/api/:id/store/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "store")
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "POST", "http://localhost:60316/api/123/store/", []byte("store"))
+}
+
 func TestNotFound(t *testing.T) {
 	go func() {
 		router := middleware.New()
