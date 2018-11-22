@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"time"
 )
@@ -323,8 +324,7 @@ func (m *Middleware) findHandler(r *http.Request, children []route) (route, []ht
 func (m *Middleware) findHandlerParams(r *http.Request, child route) ([]httpParam, error) {
 	var params []httpParam
 
-	query := strings.TrimRight(r.URL.Path, "/")
-	steps := strings.Split(query, "/")
+	steps := strings.Split(path.Clean(r.URL.Path), "/")
 
 	if len(steps) != len(child.parts) {
 		return nil, errNoMatch

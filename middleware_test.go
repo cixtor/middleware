@@ -75,21 +75,6 @@ func TestPOST(t *testing.T) {
 	curl(t, "POST", "http://localhost:60303/foobar", []byte("Hello World POST"))
 }
 
-func TestPOSTComplex(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.Logger = logger
-		router.Port = "60316"
-		defer router.Shutdown()
-		router.POST("/api/:id/store/", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "store")
-		})
-		router.ListenAndServe()
-	}()
-
-	curl(t, "POST", "http://localhost:60316/api/123/store/", []byte("store"))
-}
-
 func TestNotFound(t *testing.T) {
 	go func() {
 		router := middleware.New()
@@ -267,6 +252,36 @@ func TestTrailingSlash(t *testing.T) {
 	}()
 
 	curl(t, "GET", "http://localhost:60313/hello/world/", []byte("Hello World"))
+}
+
+func TestTrailingSlashDynamic(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Port = "60316"
+		defer router.Shutdown()
+		router.POST("/api/:id/store/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "store")
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "POST", "http://localhost:60316/api/123/store/", []byte("store"))
+}
+
+func TestTrailingSlashDynamicMultiple(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Port = "60324"
+		defer router.Shutdown()
+		router.POST("/api/:id/store/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "dynamic")
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "POST", "http://localhost:60324/api/123/////store/", []byte("dynamic"))
 }
 
 func TestMultipleRoutes(t *testing.T) {
