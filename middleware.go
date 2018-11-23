@@ -99,6 +99,11 @@ type contextKey string
 var paramsKey = contextKey("MiddlewareParameter")
 
 // New returns a new initialized Middleware.
+//
+// By default, the HTTP response logger is enabled, and the text is written to
+// `/dev/stdout`. You can disable this by setting `m.Logger = nil` where “m” is
+// an instance of `middleware.New()`. You can also writes the logs to a buffer
+// or any other Go logger interface defined as `log.New()`.
 func New() *Middleware {
 	m := new(Middleware)
 
@@ -157,6 +162,11 @@ func (m *Middleware) Use(f func(http.Handler) http.Handler) {
 // matches the request URL. Additional to the standard functionality this also
 // logs every direct HTTP request into the standard output.
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if m.Logger == nil {
+		m.handleRequest(w, r)
+		return
+	}
+
 	var query string
 
 	start := time.Now()
