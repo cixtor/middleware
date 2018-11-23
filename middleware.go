@@ -108,6 +108,13 @@ func New() *Middleware {
 	return m
 }
 
+// compose follows the HTTP handler chain to execute additional middlewares.
+func compose(f, g func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return g(f(h))
+	}
+}
+
 // Use adds a middleware to the global middleware chain.
 //
 // The additional middlewares are executed in the same order as they are added
@@ -204,13 +211,6 @@ func (m *Middleware) ServeFiles(root string, prefix string) http.HandlerFunc {
 
 		handler.ServeHTTP(w, r)
 	})
-}
-
-// compose follows the HTTP handler chain to execute additional middlewares.
-func compose(f, g func(http.Handler) http.Handler) func(http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		return g(f(h))
-	}
 }
 
 // handleRequest responds to an HTTP request.
