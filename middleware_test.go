@@ -60,6 +60,90 @@ func TestIndex(t *testing.T) {
 	curl(t, "GET", "http://localhost:60302/foobar", []byte("Hello World"))
 }
 
+func TestUse(t *testing.T) {
+	lorem := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("lorem", "lorem")
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	ipsum := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("ipsum", "ipsum")
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	dolor := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("dolor", "dolor")
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Port = "60333"
+		router.Use(lorem)
+		router.Use(ipsum)
+		router.Use(dolor)
+		defer router.Shutdown()
+		router.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(
+				w,
+				"%s:%s:%s",
+				w.Header().Get("lorem"),
+				w.Header().Get("ipsum"),
+				w.Header().Get("dolor"),
+			)
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:60333/foobar", []byte("lorem:ipsum:dolor"))
+}
+
+func TestUse2(t *testing.T) {
+	lorem := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "<%s>", "1:lorem")
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	ipsum := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "<%s>", "2:ipsum")
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	dolor := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "<%s>", "3:dolor")
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Port = "60334"
+		defer router.Shutdown()
+		router.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "<4:foobar>")
+		})
+		router.Use(lorem)
+		router.Use(ipsum)
+		router.Use(dolor)
+		router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:60334/foobar", []byte("<1:lorem><2:ipsum><3:dolor><4:foobar>"))
+}
+
 func TestPOST(t *testing.T) {
 	go func() {
 		router := middleware.New()

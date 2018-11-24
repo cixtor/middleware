@@ -11,14 +11,8 @@ import (
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
 func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
-	node := route{path: path}
+	node := route{path: path, dispatcher: handle}
 	parts := strings.Split(path, "/")
-
-	if m.chain != nil {
-		node.dispatcher = m.chain(handle).ServeHTTP
-	} else {
-		node.dispatcher = handle
-	}
 
 	for idx, section := range parts {
 		if section == "" && idx == 0 {

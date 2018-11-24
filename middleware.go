@@ -306,6 +306,12 @@ func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 		))
 	}
 
+	if m.chain != nil {
+		// pass request through other middlewares.
+		m.chain(child.dispatcher).ServeHTTP(w, r)
+		return
+	}
+
 	child.dispatcher(w, r)
 }
 
