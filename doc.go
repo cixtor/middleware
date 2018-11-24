@@ -12,7 +12,6 @@
 //
 // Below is an example of a basic web server with this router:
 //
-//
 //   var router = middleware.New()
 //
 //   func init() {

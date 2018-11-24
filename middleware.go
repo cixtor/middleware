@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"errors"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -113,6 +114,11 @@ func New() *Middleware {
 	return m
 }
 
+// DiscardLogs writes all the logs to `/dev/null`.
+func (m *Middleware) DiscardLogs() {
+	m.Logger.SetOutput(ioutil.Discard)
+}
+
 // compose follows the HTTP handler chain to execute additional middlewares.
 func compose(f, g func(http.Handler) http.Handler) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
@@ -162,11 +168,6 @@ func (m *Middleware) Use(f func(http.Handler) http.Handler) {
 // matches the request URL. Additional to the standard functionality this also
 // logs every direct HTTP request into the standard output.
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if m.Logger == nil {
-		m.handleRequest(w, r)
-		return
-	}
-
 	var query string
 
 	start := time.Now()

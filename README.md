@@ -166,3 +166,4 @@ foo(
 * Access logs are sent to `os.Stdout`
 * Error logs are sent to `os.Stderr`
 * Redirect using `webserver 1>access.log 2>errors.logs`
+* Disable all logs using `router.DiscardLogs()`
