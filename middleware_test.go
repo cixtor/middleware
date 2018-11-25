@@ -323,6 +323,21 @@ func TestServeFiles(t *testing.T) {
 	curl(t, "GET", "http://localhost:60311/cdn/LICENSE.md", data)
 }
 
+func TestServeFilesFake(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Port = "60335"
+		defer router.Shutdown()
+		router.GET("/updates/appcast.xml", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "<xml></xml>")
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:60335/updates/appcast.xml", []byte("<xml></xml>"))
+}
+
 func TestTrailingSlash(t *testing.T) {
 	go func() {
 		router := middleware.New()
