@@ -338,6 +338,22 @@ func TestServeFilesFake(t *testing.T) {
 	curl(t, "GET", "http://localhost:60335/updates/appcast.xml", []byte("<xml></xml>"))
 }
 
+func TestServeFilesFakeScript(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Port = "60336"
+		defer router.Shutdown()
+		router.GET("/tag/js/gpt.js", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "(function(E){})")
+		})
+		router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:60336/tag/js/gpt.js", []byte("(function(E){})"))
+	curl(t, "GET", "http://localhost:60336/tag/js/foo.js", []byte("404 page not found\n"))
+}
+
 func TestTrailingSlash(t *testing.T) {
 	go func() {
 		router := middleware.New()
