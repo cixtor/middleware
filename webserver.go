@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 )
 
@@ -10,10 +11,6 @@ import (
 func (m *Middleware) setDefaultSettings() {
 	if m.Host == "" {
 		m.Host = defaultHost
-	}
-
-	if m.Port == "" {
-		m.Port = defaultPort
 	}
 
 	if m.ShutdownTimeout == 0 {
@@ -25,7 +22,7 @@ func (m *Middleware) setDefaultSettings() {
 func (m *Middleware) startWebServer(f func()) {
 	m.setDefaultSettings()
 
-	address := m.Host + ":" + m.Port
+	address := fmt.Sprintf("%s:%d", m.Host, m.Port)
 	m.serverShutdown = make(chan bool)
 	m.serverInstance = &http.Server{
 		Addr:              address,

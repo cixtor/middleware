@@ -12,9 +12,6 @@ import (
 	"time"
 )
 
-// defaultPort is the TCP port number to attach the server.
-const defaultPort = "8080"
-
 // defaultHost is the IP address to attach the web server.
 const defaultHost = "0.0.0.0"
 
@@ -36,7 +33,7 @@ var errNoMatch = errors.New("no matching route")
 // processors and named parameters.
 type Middleware struct {
 	Host              string
-	Port              string
+	Port              uint16 // A port number is a 16-bit unsigned integer, thus ranging from 0 to 65535.
 	Logger            *log.Logger
 	NotFound          http.Handler
 	IdleTimeout       time.Duration
