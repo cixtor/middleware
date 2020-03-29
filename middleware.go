@@ -12,9 +12,6 @@ import (
 	"time"
 )
 
-// defaultHost is the IP address to attach the web server.
-const defaultHost = "0.0.0.0"
-
 // defaultShutdownTimeout is the maximum time before server halt.
 const defaultShutdownTimeout = 5 * time.Second
 
