@@ -289,9 +289,9 @@ func TestAllowAccess(t *testing.T) {
 		router.Host = "localhost"
 		router.Port = 60309
 		defer router.Shutdown()
-		router.AllowAccessExcept([]string{"[::1]"})
+		router.AllowAccessExcept([]string{"127.0.0.1"})
 		router.OPTIONS("/admin/user/info", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "Hello World")
+			fmt.Fprintf(w, "Hello World, %s", r.RemoteAddr)
 		})
 		_ = router.ListenAndServe()
 	}()
