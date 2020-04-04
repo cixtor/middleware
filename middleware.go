@@ -18,9 +18,6 @@ const defaultShutdownTimeout = 5 * time.Second
 // allowAccessExcept is the ID for the "allow" restriction rule.
 const allowAccessExcept = 0x6411a9
 
-// denyAccessExcept is the ID for the "deny" restriction rule.
-const denyAccessExcept = 0x32afb2
-
 // errNoMatch represents a simple matching error.
 var errNoMatch = errors.New("no matching route")
 
@@ -42,7 +39,6 @@ type Middleware struct {
 	nodes             map[string][]route
 	serverInstance    *http.Server
 	serverShutdown    chan bool
-	allowedAddresses  []string
 	deniedAddresses   []string
 	restrictionType   int
 }
@@ -268,12 +264,6 @@ func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	if m.restrictionType == allowAccessExcept && inArray(m.deniedAddresses, remoteAddr(r)) {
 		// IP address was blacklisted, return “403 Forbidden”.
-		http.Error(w, http.StatusText(403), http.StatusForbidden)
-		return
-	}
-
-	if m.restrictionType == denyAccessExcept && !inArray(m.allowedAddresses, remoteAddr(r)) {
-		// IP address is not whitelisted, return “403 Forbidden”.
 		http.Error(w, http.StatusText(403), http.StatusForbidden)
 		return
 	}
