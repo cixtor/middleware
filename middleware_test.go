@@ -299,23 +299,6 @@ func TestAllowAccess(t *testing.T) {
 	curl(t, "OPTIONS", "http://localhost:60309/admin/user/info", []byte("Forbidden\n"))
 }
 
-func TestDenyAccess(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.Logger = logger
-		router.Host = "localhost"
-		router.Port = 60310
-		defer router.Shutdown()
-		router.DenyAccessExcept([]string{"82.82.82.82"})
-		router.OPTIONS("/admin/user/info", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "Hello World")
-		})
-		_ = router.ListenAndServe()
-	}()
-
-	curl(t, "OPTIONS", "http://localhost:60310/admin/user/info", []byte("Forbidden\n"))
-}
-
 func TestServeFiles(t *testing.T) {
 	go func() {
 		router := middleware.New()
