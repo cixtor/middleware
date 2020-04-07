@@ -15,9 +15,6 @@ import (
 // defaultShutdownTimeout is the maximum time before server halt.
 const defaultShutdownTimeout = 5 * time.Second
 
-// allowAccessExcept is the ID for the "allow" restriction rule.
-const allowAccessExcept = 0x6411a9
-
 // errNoMatch represents a simple matching error.
 var errNoMatch = errors.New("no matching route")
 
@@ -39,8 +36,6 @@ type Middleware struct {
 	nodes             map[string][]route
 	serverInstance    *http.Server
 	serverShutdown    chan bool
-	deniedAddresses   []string
-	restrictionType   int
 }
 
 // route is a data structure to keep the defined routes, named parameters and
@@ -259,12 +254,6 @@ func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "" || r.URL.Path[0] != '/' {
 		// URL prefix is invalid, return “400 Bad Request”.
 		http.Error(w, http.StatusText(400), http.StatusBadRequest)
-		return
-	}
-
-	if m.restrictionType == allowAccessExcept && inArray(m.deniedAddresses, remoteAddr(r)) {
-		// IP address was blacklisted, return “403 Forbidden”.
-		http.Error(w, http.StatusText(403), http.StatusForbidden)
 		return
 	}
 
