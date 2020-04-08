@@ -282,23 +282,6 @@ func TestComplexParam(t *testing.T) {
 	curl(t, "PUT", "http://localhost:60312/account/john/info", []byte("Hello john"))
 }
 
-func TestAllowAccess(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.Logger = logger
-		router.Host = "localhost"
-		router.Port = 60309
-		defer router.Shutdown()
-		router.AllowAccessExcept([]string{"127.0.0.1"})
-		router.OPTIONS("/admin/user/info", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "Hello World, %s", r.RemoteAddr)
-		})
-		_ = router.ListenAndServe()
-	}()
-
-	curl(t, "OPTIONS", "http://localhost:60309/admin/user/info", []byte("Forbidden\n"))
-}
-
 func TestServeFiles(t *testing.T) {
 	go func() {
 		router := middleware.New()
