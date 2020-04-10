@@ -64,14 +64,3 @@ func remoteAddr(r *http.Request) string {
 
 	return r.RemoteAddr[0:mark]
 }
-
-// inArray checks if the text is in the list.
-func inArray(haystack []string, needle string) bool {
-	for _, value := range haystack {
-		if value == needle {
-			return true
-		}
-	}
-
-	return false
-}
