@@ -23,19 +23,31 @@ var errNoMatch = errors.New("no matching route")
 // add additional functionality like custom routes, separated HTTP method
 // processors and named parameters.
 type Middleware struct {
-	Host              string
-	Port              uint16 // A port number is a 16-bit unsigned integer, thus ranging from 0 to 65535.
-	Logger            *log.Logger
-	NotFound          http.Handler
-	IdleTimeout       time.Duration
-	ReadTimeout       time.Duration
-	WriteTimeout      time.Duration
-	ShutdownTimeout   time.Duration
+	Host string
+
+	Port uint16
+
+	Logger *log.Logger
+
+	NotFound http.Handler
+
+	IdleTimeout time.Duration
+
+	ReadTimeout time.Duration
+
+	WriteTimeout time.Duration
+
+	ShutdownTimeout time.Duration
+
 	ReadHeaderTimeout time.Duration
-	chain             func(http.Handler) http.Handler
-	nodes             map[string][]route
-	serverInstance    *http.Server
-	serverShutdown    chan bool
+
+	chain func(http.Handler) http.Handler
+
+	nodes map[string][]route
+
+	serverInstance *http.Server
+
+	serverShutdown chan bool
 }
 
 // route is a data structure to keep the defined routes, named parameters and
