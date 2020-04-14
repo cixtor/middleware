@@ -25,6 +25,28 @@ var errNoMatch = errors.New("no matching route")
 type Middleware struct {
 	Host string
 
+	// Port is a communication endpoint. At the software level, within an
+	// operating system, a port is a logical construct that identifies a
+	// specific process or a type of network service. A port is identified for
+	// each transport protocol and address combination by a 16-bit unsigned
+	// number, known as the port number.
+	//
+	// A port number is a 16-bit unsigned integer, thus ranging from 0 to 65535.
+	//
+	// For TCP, port number 0 is reserved and cannot be used, while for UDP,
+	// the source port is optional and a value of zero means no port.
+	//
+	// A port number is always associated with an IP address of a host and the
+	// type of transport protocol used for communication. It completes the
+	// destination or origination network address of a message. Specific port
+	// numbers are reserved to identify specific services so that an arriving
+	// packet can be easily forwarded to a running application. For this
+	// purpose, port numbers lower than 1024 identify the historically most
+	// commonly used services and are called the well-known port numbers.
+	// Higher-numbered ports are available for general use by applications and
+	// are known as ephemeral ports.
+	//
+	// Ref: https://en.wikipedia.org/wiki/Port_%28computer_networking%29
 	Port uint16
 
 	Logger *log.Logger
