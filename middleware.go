@@ -23,6 +23,30 @@ var errNoMatch = errors.New("no matching route")
 // add additional functionality like custom routes, separated HTTP method
 // processors and named parameters.
 type Middleware struct {
+	// Hostname (archaically nodename) is a label that is assigned to a device
+	// connected to a computer network and that is used to identify the device
+	// in various forms of electronic communication, such as the World Wide
+	// Web. Hostnames may be simple names consisting of a single word or
+	// phrase, or they may be structured. Each hostname usually has at least
+	// one numeric network address associated with it for routing packets for
+	// performance and other reasons.
+	//
+	// Internet hostnames may have appended the name of a Domain Name System
+	// (DNS) domain, separated from the host-specific label by a period
+	// ("dot"). In the latter form, a hostname is also called a domain name. If
+	// the domain name is completely specified, including a top-level domain of
+	// the Internet, then the hostname is said to be a fully qualified domain
+	// name (FQDN). Hostnames that include DNS domains are often stored in the
+	// Domain Name System together with the IP addresses of the host they
+	// represent for the purpose of mapping the hostname to an address, or the
+	// reverse process.
+	//
+	// Hostnames are composed of a sequence of labels concatenated with dots.
+	// For example, "en.example.org" is a hostname. Each label must be from 1
+	// to 63 characters long. The entire hostname, including the delimiting
+	// dots, has a maximum of 253 ASCII characters.
+	//
+	// Ref: https://en.wikipedia.org/wiki/Hostname
 	Host string
 
 	// Port is a communication endpoint. At the software level, within an
