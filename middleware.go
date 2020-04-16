@@ -73,6 +73,24 @@ type Middleware struct {
 	// Ref: https://en.wikipedia.org/wiki/Port_%28computer_networking%29
 	Port uint16
 
+	// Logger records a history of page requests.
+	//
+	// The W3C maintains a standard format (the Common Log Format) for web
+	// server log files, but other proprietary formats exist. More recent
+	// entries are typically appended to the end of the file. Information about
+	// the request, including client IP address, request date/time, page
+	// requested, HTTP code, bytes served, user agent, and referrer are
+	// typically added. This data can be combined into a single file, or
+	// separated into distinct logs, such as an access log, error log, or
+	// referrer log. However, server logs typically do not collect
+	// user-specific information.
+	//
+	// A Logger represents an active logging object that generates lines of
+	// output to an io.Writer. Each logging operation makes a single call to
+	// the Writer's Write method. A Logger can be used simultaneously from
+	// multiple goroutines; it guarantees to serialize access to the Writer.
+	//
+	// Ref: https://en.wikipedia.org/wiki/Server_log
 	Logger *log.Logger
 
 	NotFound http.Handler
