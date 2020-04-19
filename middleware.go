@@ -114,6 +114,11 @@ type Middleware struct {
 	// ReadTimeout is used. If both are zero, there is no timeout.
 	IdleTimeout time.Duration
 
+	// ReadTimeout is the maximum duration for reading the entire request,
+	// including the body. Because ReadTimeout does not let Handlers make
+	// per-request decisions on each request body's acceptable deadline or
+	// upload rate, most users will prefer to use ReadHeaderTimeout. It is
+	// valid to use them both.
 	ReadTimeout time.Duration
 
 	WriteTimeout time.Duration
