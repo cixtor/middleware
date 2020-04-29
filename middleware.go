@@ -121,6 +121,10 @@ type Middleware struct {
 	// valid to use them both.
 	ReadTimeout time.Duration
 
+	// WriteTimeout is the maximum duration before timing out writes of the
+	// response. It is reset whenever a new request's header is read. Like
+	// ReadTimeout, it does not let Handlers make decisions on a per-request
+	// basis.
 	WriteTimeout time.Duration
 
 	ShutdownTimeout time.Duration
