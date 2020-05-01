@@ -129,6 +129,11 @@ type Middleware struct {
 
 	ShutdownTimeout time.Duration
 
+	// ReadHeaderTimeout is the amount of time allowed to read request headers.
+	// The connection's read deadline is reset after reading the headers and
+	// the Handler can decide what is considered too slow for the body. If
+	// ReadHeaderTimeout is zero, the value of ReadTimeout is used. If both are
+	// zero, there is no timeout.
 	ReadHeaderTimeout time.Duration
 
 	chain func(http.Handler) http.Handler
