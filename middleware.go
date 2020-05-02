@@ -12,9 +12,6 @@ import (
 	"time"
 )
 
-// defaultShutdownTimeout is the maximum time before server halt.
-const defaultShutdownTimeout = 5 * time.Second
-
 // errNoMatch represents a simple matching error.
 var errNoMatch = errors.New("no matching route")
 
@@ -127,6 +124,9 @@ type Middleware struct {
 	// basis.
 	WriteTimeout time.Duration
 
+	// ShutdownTimeout is the maximum duration before cancelling the server
+	// shutdown context. This allows the developer to guarantee the termination
+	// of the server even if a client is keeping a connection idle.
 	ShutdownTimeout time.Duration
 
 	// ReadHeaderTimeout is the amount of time allowed to read request headers.

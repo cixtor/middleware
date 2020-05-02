@@ -7,16 +7,13 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // startWebServer setups and starts the web server.
 func (m *Middleware) startWebServer(f func() error) error {
 	if err := m.validateHostname(m.Host); err != nil {
 		return err
-	}
-
-	if m.ShutdownTimeout == 0 {
-		m.ShutdownTimeout = defaultShutdownTimeout
 	}
 
 	address := fmt.Sprintf("%s:%d", m.Host, m.Port)
@@ -75,25 +72,37 @@ func (m *Middleware) ListenAndServe() error {
 // of the server's certificate, any intermediates, and the CA's certificate.
 func (m *Middleware) ListenAndServeTLS(certFile string, keyFile string, cfg *tls.Config) error {
 	return m.startWebServer(func() error {
-		m.serverInstance.TLSConfig = cfg /* custom TLLS config */
+		m.serverInstance.TLSConfig = cfg /* TLS configuration */
 
 		return m.serverInstance.ListenAndServeTLS(certFile, keyFile)
 	})
 }
 
-// Shutdown stops the web server.
+// Shutdown gracefully shuts down the server without interrupting any active
+// connections. Shutdown works by first closing all open listeners, then
+// closing all idle connections, and then waiting indefinitely for connections
+// to return to idle and then shut down.
+//
+// If the provided context expires before the shutdown is complete, Shutdown
+// returns the context's error, otherwise it returns any error returned from
+// closing the Server's underlying Listener(s).
 func (m *Middleware) Shutdown() {
 	m.serverShutdown <- true
 }
+
+// defaultShutdownTimeout is the maximum time before server halt.
+const defaultShutdownTimeout = 5 * time.Second
 
 // gracefulServerShutdown shutdowns the server.
 func (m *Middleware) gracefulServerShutdown() {
 	<-m.serverShutdown /* wait shutdown */
 
-	ctx, cancel := context.WithTimeout(
-		context.Background(),
-		m.ShutdownTimeout,
-	)
+	if m.ShutdownTimeout == 0 {
+		// NOTES(cixtor): avoid context deadline exceeded.
+		m.ShutdownTimeout = defaultShutdownTimeout
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), m.ShutdownTimeout)
 
 	defer cancel()
 
