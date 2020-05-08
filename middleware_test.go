@@ -192,7 +192,7 @@ func TestNotFoundSimilar(t *testing.T) {
 		_ = router.ListenAndServe()
 	}()
 
-	curl(t, "GET", "http://localhost:60314/dolor/ipsum/lorem", []byte("404 page not found\n"))
+	curl(t, "GET", "http://localhost:60314/lorem/ipsum/dolores", []byte("404 page not found\n"))
 }
 
 func TestDirectoryListing(t *testing.T) {
