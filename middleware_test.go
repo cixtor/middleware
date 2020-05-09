@@ -195,6 +195,23 @@ func TestNotFoundSimilar(t *testing.T) {
 	curl(t, "GET", "http://localhost:60314/lorem/ipsum/dolores", []byte("404 page not found\n"))
 }
 
+func TestNotFoundInvalid(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Host = "localhost"
+		router.Port = 60317
+		router.NotFound = nil
+		defer router.Shutdown()
+		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World GET")
+		})
+		_ = router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:60314/test", []byte("404 page not found\n"))
+}
+
 func TestDirectoryListing(t *testing.T) {
 	go func() {
 		router := middleware.New()
