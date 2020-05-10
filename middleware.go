@@ -365,35 +365,39 @@ func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// iterate against the routes to find a handler.
+	var h http.HandlerFunc
 	child, params, err := m.findHandler(r, children)
 
-	// send “404 Not Found” if there is no handler.
+	// send "404 Not Found" if there is no handler.
 	if err != nil || child.dispatcher == nil {
-		if m.NotFound != nil {
-			m.NotFound.ServeHTTP(w, r)
-			return
-		}
-
-		http.NotFound(w, r)
-		return
+		h = m.notFoundHandler()
+	} else {
+		h = child.dispatcher
 	}
 
 	if len(params) > 0 {
-		// save params in the request context.
-		r = r.WithContext(context.WithValue(
-			r.Context(),
-			paramsKey,
-			params,
-		))
+		// insert request parameters into the request context.
+		r = r.WithContext(context.WithValue(r.Context(), paramsKey, params))
 	}
 
 	if m.chain != nil {
 		// pass request through other middlewares.
-		m.chain(child.dispatcher).ServeHTTP(w, r)
+		m.chain(h).ServeHTTP(w, r)
 		return
 	}
 
-	child.dispatcher(w, r)
+	h(w, r)
+}
+
+// notFoundHandler
+func (m *Middleware) notFoundHandler() http.HandlerFunc {
+	if m.NotFound != nil {
+		// custom 404 http handler.
+		return m.NotFound.ServeHTTP
+	}
+
+	// default 404 http handler.
+	return http.NotFound
 }
 
 // findHandler
