@@ -209,7 +209,26 @@ func TestNotFoundInvalid(t *testing.T) {
 		_ = router.ListenAndServe()
 	}()
 
-	curl(t, "GET", "http://localhost:60314/test", []byte("404 page not found\n"))
+	curl(t, "GET", "http://localhost:60317/test", []byte("404 page not found\n"))
+}
+
+func TestNotFoundCustom(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Host = "localhost"
+		router.Port = 60318
+		router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "404 page does not exist\n")
+		})
+		defer router.Shutdown()
+		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World GET")
+		})
+		_ = router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:60318/test", []byte("404 page does not exist\n"))
 }
 
 func TestDirectoryListing(t *testing.T) {
