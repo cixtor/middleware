@@ -231,6 +231,34 @@ func TestNotFoundCustom(t *testing.T) {
 	curl(t, "GET", "http://localhost:60318/test", []byte("404 page does not exist\n"))
 }
 
+func TestNotFoundCustomWithInterceptor(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		router.Host = "localhost"
+		router.Port = 60319
+		router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "404 missing page\n")
+		})
+		router.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/test" {
+					fmt.Fprintf(w, "hello interceptor\n")
+					// return /* do not return */
+				}
+				next.ServeHTTP(w, r)
+			})
+		})
+		defer router.Shutdown()
+		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World GET")
+		})
+		_ = router.ListenAndServe()
+	}()
+
+	curl(t, "GET", "http://localhost:60319/test", []byte("hello interceptor\n404 missing page\n"))
+}
+
 func TestDirectoryListing(t *testing.T) {
 	go func() {
 		router := middleware.New()
