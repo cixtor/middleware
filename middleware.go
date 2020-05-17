@@ -365,14 +365,14 @@ func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// iterate against the routes to find a handler.
-	var h http.HandlerFunc
+	var handler http.HandlerFunc
 	child, params, err := m.findHandler(r, children)
 
 	// send "404 Not Found" if there is no handler.
 	if err != nil || child.dispatcher == nil {
-		h = m.notFoundHandler()
+		handler = m.notFoundHandler()
 	} else {
-		h = child.dispatcher
+		handler = child.dispatcher
 	}
 
 	if len(params) > 0 {
@@ -382,11 +382,11 @@ func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	if m.chain != nil {
 		// pass request through other middlewares.
-		m.chain(h).ServeHTTP(w, r)
+		m.chain(handler).ServeHTTP(w, r)
 		return
 	}
 
-	h(w, r)
+	handler(w, r)
 }
 
 // notFoundHandler
