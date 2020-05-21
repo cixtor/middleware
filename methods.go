@@ -53,7 +53,7 @@ func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
 // is that GET may be used arbitrarily by robots or crawlers, which should not
 // need to consider the side effects that a request should cause.
 func (m *Middleware) GET(path string, handle http.HandlerFunc) {
-	m.handle("GET", path, handle)
+	m.handle(http.MethodGet, path, handle)
 }
 
 // POST submits data to be processed to the identified resource.
@@ -108,6 +108,6 @@ func (m *Middleware) STATIC(folder string, urlPrefix string) {
 	node.path = urlPrefix
 	node.glob = true
 
-	m.nodes["GET"] = append(m.nodes["GET"], node)
+	m.nodes[http.MethodGet] = append(m.nodes[http.MethodGet], node)
 	m.nodes["POST"] = append(m.nodes["POST"], node)
 }
