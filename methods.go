@@ -67,7 +67,7 @@ func (m *Middleware) GET(path string, handle http.HandlerFunc) {
 // user agents will log the request URI in some place where it might be visible
 // to third parties. Servers can use POST-based form submission instead.
 func (m *Middleware) POST(path string, handle http.HandlerFunc) {
-	m.handle("POST", path, handle)
+	m.handle(http.MethodPost, path, handle)
 }
 
 // PUT is a shortcut for middleware.handle("PUT", path, handle).
@@ -109,5 +109,5 @@ func (m *Middleware) STATIC(folder string, urlPrefix string) {
 	node.glob = true
 
 	m.nodes[http.MethodGet] = append(m.nodes[http.MethodGet], node)
-	m.nodes["POST"] = append(m.nodes["POST"], node)
+	m.nodes[http.MethodPost] = append(m.nodes[http.MethodPost], node)
 }
