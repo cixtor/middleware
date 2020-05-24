@@ -72,7 +72,7 @@ func (m *Middleware) POST(path string, handle http.HandlerFunc) {
 
 // PUT is a shortcut for middleware.handle("PUT", path, handle).
 func (m *Middleware) PUT(path string, handle http.HandlerFunc) {
-	m.handle("PUT", path, handle)
+	m.handle(http.MethodPut, path, handle)
 }
 
 // PATCH is a shortcut for middleware.handle("PATCH", path, handle).
