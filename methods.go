@@ -77,7 +77,7 @@ func (m *Middleware) PUT(path string, handle http.HandlerFunc) {
 
 // PATCH is a shortcut for middleware.handle("PATCH", path, handle).
 func (m *Middleware) PATCH(path string, handle http.HandlerFunc) {
-	m.handle("PATCH", path, handle)
+	m.handle(http.MethodPatch, path, handle)
 }
 
 // DELETE is a shortcut for middleware.handle("DELETE", path, handle).
