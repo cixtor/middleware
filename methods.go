@@ -87,7 +87,7 @@ func (m *Middleware) DELETE(path string, handle http.HandlerFunc) {
 
 // HEAD is a shortcut for middleware.handle("HEAD", path, handle).
 func (m *Middleware) HEAD(path string, handle http.HandlerFunc) {
-	m.handle("HEAD", path, handle)
+	m.handle(http.MethodHead, path, handle)
 }
 
 // OPTIONS is a shortcut for middleware.handle("OPTIONS", path, handle).
