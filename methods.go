@@ -92,7 +92,7 @@ func (m *Middleware) HEAD(path string, handle http.HandlerFunc) {
 
 // OPTIONS is a shortcut for middleware.handle("OPTIONS", path, handle).
 func (m *Middleware) OPTIONS(path string, handle http.HandlerFunc) {
-	m.handle("OPTIONS", path, handle)
+	m.handle(http.MethodOptions, path, handle)
 }
 
 // STATIC refers to the static assets folder, a place where people can store
