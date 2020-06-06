@@ -5,12 +5,12 @@ import (
 	"strings"
 )
 
-// handle registers a new request handle with the given path and method.
+// register registers a new request register with the given path and method.
 //
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
-func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
+func (m *Middleware) register(method, path string, handle http.HandlerFunc) {
 	node := route{path: path, dispatcher: handle}
 	parts := strings.Split(path, "/")
 
@@ -53,7 +53,7 @@ func (m *Middleware) handle(method, path string, handle http.HandlerFunc) {
 // is that GET may be used arbitrarily by robots or crawlers, which should not
 // need to consider the side effects that a request should cause.
 func (m *Middleware) GET(path string, handle http.HandlerFunc) {
-	m.handle(http.MethodGet, path, handle)
+	m.register(http.MethodGet, path, handle)
 }
 
 // POST submits data to be processed to the identified resource.
@@ -67,32 +67,32 @@ func (m *Middleware) GET(path string, handle http.HandlerFunc) {
 // user agents will log the request URI in some place where it might be visible
 // to third parties. Servers can use POST-based form submission instead.
 func (m *Middleware) POST(path string, handle http.HandlerFunc) {
-	m.handle(http.MethodPost, path, handle)
+	m.register(http.MethodPost, path, handle)
 }
 
 // PUT is a shortcut for middleware.handle("PUT", path, handle).
 func (m *Middleware) PUT(path string, handle http.HandlerFunc) {
-	m.handle(http.MethodPut, path, handle)
+	m.register(http.MethodPut, path, handle)
 }
 
 // PATCH is a shortcut for middleware.handle("PATCH", path, handle).
 func (m *Middleware) PATCH(path string, handle http.HandlerFunc) {
-	m.handle(http.MethodPatch, path, handle)
+	m.register(http.MethodPatch, path, handle)
 }
 
 // DELETE is a shortcut for middleware.handle("DELETE", path, handle).
 func (m *Middleware) DELETE(path string, handle http.HandlerFunc) {
-	m.handle(http.MethodDelete, path, handle)
+	m.register(http.MethodDelete, path, handle)
 }
 
 // HEAD is a shortcut for middleware.handle("HEAD", path, handle).
 func (m *Middleware) HEAD(path string, handle http.HandlerFunc) {
-	m.handle(http.MethodHead, path, handle)
+	m.register(http.MethodHead, path, handle)
 }
 
 // OPTIONS is a shortcut for middleware.handle("OPTIONS", path, handle).
 func (m *Middleware) OPTIONS(path string, handle http.HandlerFunc) {
-	m.handle(http.MethodOptions, path, handle)
+	m.register(http.MethodOptions, path, handle)
 }
 
 // STATIC refers to the static assets folder, a place where people can store
