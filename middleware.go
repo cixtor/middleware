@@ -44,7 +44,7 @@ type Middleware struct {
 	// dots, has a maximum of 253 ASCII characters.
 	//
 	// Ref: https://en.wikipedia.org/wiki/Hostname
-	Host string
+	Hostname string
 
 	// Port is a communication endpoint. At the software level, within an
 	// operating system, a port is a logical construct that identifies a
@@ -138,45 +138,11 @@ type Middleware struct {
 
 	chain func(http.Handler) http.Handler
 
-	nodes map[string][]route
+	hosts map[string]*Router
 
 	serverInstance *http.Server
 
 	serverShutdown chan bool
-}
-
-// route is a data structure to keep the defined routes, named parameters and
-// HTTP handler. Some routes like the document root and static files might set
-// another property to force the ServeHTTP method to return immediately for
-// every match in the URL no matter if the named parameters do not match.
-type route struct {
-	// path is the raw URL: `/lorem/:ipsum/dolor`
-	path string
-	// parts is a list of sections representing the URL.
-	parts []rpart
-	// glob is true if the route has a global catcher.
-	glob bool
-	// dispatcher is the HTTP handler function for the route.
-	dispatcher http.HandlerFunc
-}
-
-// rpart represents each part of the route.
-//
-// Example:
-//
-//   /lorem/:ipsum/dolor -> []section{
-//     section{name:"<root>", dyna: false, root: true},
-//     section{name:"lorem",  dyna: false, root: false},
-//     section{name:":ipsum", dyna: true,  root: false},
-//     section{name:"dolor",  dyna: false, root: false},
-//   }
-type rpart struct {
-	// name is the raw text in the URL.
-	name string
-	// dyna is short for “dynamic”; true if `/^:\S+/` false otherwise
-	dyna bool
-	// root is true if the route part is the first in the list.
-	root bool
 }
 
 // httpParam represents a single parameter in the URL.
@@ -200,8 +166,10 @@ var paramsKey = contextKey("MiddlewareParameter")
 func New() *Middleware {
 	m := new(Middleware)
 
-	m.nodes = make(map[string][]route)
+	m.Hostname = "0.0.0.0"
+	m.Port = 80
 	m.Logger = log.New(os.Stdout, "", log.LstdFlags)
+	m.hosts = map[string]*Router{"_": newRouter()}
 
 	return m
 }
@@ -260,8 +228,12 @@ func (m *Middleware) Use(f func(http.Handler) http.Handler) {
 // matches the request URL. Additional to the standard functionality this also
 // logs every direct HTTP request into the standard output.
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var query string
+	if _, ok := m.hosts[r.Host]; !ok {
+		http.Error(w, "unexpected host "+r.Host, http.StatusInternalServerError)
+		return
+	}
 
+	var query string
 	start := time.Now()
 	writer := response{w, 0, 0}
 
@@ -269,7 +241,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		query = "?" + r.URL.RawQuery
 	}
 
-	m.handleRequest(&writer, r)
+	m.handleRequest(m.hosts[r.Host], &writer, r)
 
 	m.Logger.Printf(
 		"%s %s \"%s %s %s\" %d %d \"%s\" %v",
@@ -283,37 +255,6 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r.Header.Get("User-Agent"),
 		time.Since(start),
 	)
-}
-
-// ServeFiles serves files from the given file system root.
-//
-// A pre-check is executed to prevent directory listing attacks.
-func (m *Middleware) ServeFiles(root string, prefix string) http.HandlerFunc {
-	fs := http.FileServer(http.Dir(root))
-	handler := http.StripPrefix(prefix, fs)
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var err error
-		var raw string
-		var fifo os.FileInfo
-
-		// convert URL into file system path.
-		raw = root + r.URL.Path[len(prefix):]
-
-		if fifo, err = os.Stat(raw); err != nil {
-			// requested resource does not exists; return 404 Not Found
-			http.Error(w, http.StatusText(404), http.StatusNotFound)
-			return
-		}
-
-		if fifo.IsDir() {
-			// requested resource is a directory; return 403 Forbidden
-			http.Error(w, http.StatusText(403), http.StatusForbidden)
-			return
-		}
-
-		handler.ServeHTTP(w, r)
-	})
 }
 
 // handleRequest responds to an HTTP request.
@@ -349,8 +290,8 @@ func (m *Middleware) ServeFiles(root string, prefix string) http.HandlerFunc {
 // the defined URL. This is because trailing slashes are ignored, so even the
 // first attempt (which is similar to what the HTTP handler is expecting) will
 // fail as there is not enough data to set the value for the “group” parameter.
-func (m *Middleware) handleRequest(w http.ResponseWriter, r *http.Request) {
-	children, ok := m.nodes[r.Method]
+func (m *Middleware) handleRequest(router *Router, w http.ResponseWriter, r *http.Request) {
+	children, ok := router.nodes[r.Method]
 
 	if !ok {
 		// HTTP method not allowed, return “405 Method Not Allowed”.
@@ -451,4 +392,57 @@ func (m *Middleware) findHandlerParams(r *http.Request, child route) ([]httpPara
 	}
 
 	return params, nil
+}
+
+// Host registers a new Top-Level Domain (TLD), if necessary, and then returns
+// a pointer to the associated router, which users can use to register an HTTP
+// handler of type GET, POST, PUT, PATCH, DELETE, HEAD or OPTIONS to handle
+// requests when req.Host == tld.
+func (m *Middleware) Host(tld string) *Router {
+	if _, ok := m.hosts[tld]; !ok {
+		m.hosts[tld] = newRouter()
+	}
+	return m.hosts[tld]
+}
+
+// GET registers a GET endpoint for the default host.
+func (m *Middleware) GET(path string, fn http.HandlerFunc) {
+	m.hosts["_"].GET(path, fn)
+}
+
+// POST registers a POST endpoint for the default host.
+func (m *Middleware) POST(path string, fn http.HandlerFunc) {
+	m.hosts["_"].POST(path, fn)
+}
+
+// PUT registers a PUT endpoint for the default host.
+func (m *Middleware) PUT(path string, fn http.HandlerFunc) {
+	m.hosts["_"].PUT(path, fn)
+}
+
+// PATCH registers a PATCH endpoint for the default host.
+func (m *Middleware) PATCH(path string, fn http.HandlerFunc) {
+	m.hosts["_"].PATCH(path, fn)
+}
+
+// DELETE registers a DELETE endpoint for the default host.
+func (m *Middleware) DELETE(path string, fn http.HandlerFunc) {
+	m.hosts["_"].DELETE(path, fn)
+}
+
+// HEAD registers a HEAD endpoint for the default host.
+func (m *Middleware) HEAD(path string, fn http.HandlerFunc) {
+	m.hosts["_"].HEAD(path, fn)
+}
+
+// OPTIONS registers an OPTIONS endpoint for the default host.
+func (m *Middleware) OPTIONS(path string, fn http.HandlerFunc) {
+	m.hosts["_"].OPTIONS(path, fn)
+}
+
+// ServeFiles registers a GET and POST endpoint to handle arbitrary requests to
+// an existing folder with static files. The function registers the endpoints
+// against the default host.
+func (m *Middleware) ServeFiles(root string, prefix string) http.HandlerFunc {
+	return m.hosts["_"].ServeFiles(root, prefix)
 }
