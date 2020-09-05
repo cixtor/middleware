@@ -20,56 +20,6 @@ var errNoMatch = errors.New("no matching route")
 // add additional functionality like custom routes, separated HTTP method
 // processors and named parameters.
 type Middleware struct {
-	// Hostname (archaically nodename) is a label that is assigned to a device
-	// connected to a computer network and that is used to identify the device
-	// in various forms of electronic communication, such as the World Wide
-	// Web. Hostnames may be simple names consisting of a single word or
-	// phrase, or they may be structured. Each hostname usually has at least
-	// one numeric network address associated with it for routing packets for
-	// performance and other reasons.
-	//
-	// Internet hostnames may have appended the name of a Domain Name System
-	// (DNS) domain, separated from the host-specific label by a period
-	// ("dot"). In the latter form, a hostname is also called a domain name. If
-	// the domain name is completely specified, including a top-level domain of
-	// the Internet, then the hostname is said to be a fully qualified domain
-	// name (FQDN). Hostnames that include DNS domains are often stored in the
-	// Domain Name System together with the IP addresses of the host they
-	// represent for the purpose of mapping the hostname to an address, or the
-	// reverse process.
-	//
-	// Hostnames are composed of a sequence of labels concatenated with dots.
-	// For example, "en.example.org" is a hostname. Each label must be from 1
-	// to 63 characters long. The entire hostname, including the delimiting
-	// dots, has a maximum of 253 ASCII characters.
-	//
-	// Ref: https://en.wikipedia.org/wiki/Hostname
-	Hostname string
-
-	// Port is a communication endpoint. At the software level, within an
-	// operating system, a port is a logical construct that identifies a
-	// specific process or a type of network service. A port is identified for
-	// each transport protocol and address combination by a 16-bit unsigned
-	// number, known as the port number.
-	//
-	// A port number is a 16-bit unsigned integer, thus ranging from 0 to 65535.
-	//
-	// For TCP, port number 0 is reserved and cannot be used, while for UDP,
-	// the source port is optional and a value of zero means no port.
-	//
-	// A port number is always associated with an IP address of a host and the
-	// type of transport protocol used for communication. It completes the
-	// destination or origination network address of a message. Specific port
-	// numbers are reserved to identify specific services so that an arriving
-	// packet can be easily forwarded to a running application. For this
-	// purpose, port numbers lower than 1024 identify the historically most
-	// commonly used services and are called the well-known port numbers.
-	// Higher-numbered ports are available for general use by applications and
-	// are known as ephemeral ports.
-	//
-	// Ref: https://en.wikipedia.org/wiki/Port_%28computer_networking%29
-	Port uint16
-
 	// Logger records a history of page requests.
 	//
 	// The W3C maintains a standard format (the Common Log Format) for web
@@ -166,8 +116,6 @@ var paramsKey = contextKey("MiddlewareParameter")
 func New() *Middleware {
 	m := new(Middleware)
 
-	m.Hostname = "0.0.0.0"
-	m.Port = 80
 	m.Logger = log.New(os.Stdout, "", log.LstdFlags)
 	m.hosts = map[string]*Router{"_": newRouter()}
 

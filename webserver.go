@@ -4,22 +4,21 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
 
 // startWebServer setups and starts the web server.
-func (m *Middleware) startWebServer(f func() error) error {
-	if err := m.validateHostname(m.Host); err != nil {
+func (m *Middleware) startWebServer(addr string, f func() error) error {
+	if err := m.validateHostAndPort(addr); err != nil {
 		return err
 	}
 
-	address := fmt.Sprintf("%s:%d", m.Host, m.Port)
 	m.serverShutdown = make(chan bool)
 	m.serverInstance = &http.Server{
-		Addr:              address,
+		Addr:              addr,
 		Handler:           m,
 		IdleTimeout:       m.IdleTimeout,
 		ReadTimeout:       m.ReadTimeout,
@@ -29,26 +28,96 @@ func (m *Middleware) startWebServer(f func() error) error {
 
 	go m.gracefulServerShutdown()
 
-	m.Logger.Println("listening on", address)
+	m.Logger.Println("listening on", addr)
 
 	return f() /* ListenAndServe OR ListenAndServeTLS */
 }
+
+var ErrInvalidAddressFormat = errors.New("server address must be [string]:[0-65535]")
 
 var ErrHostnameIsTooLong = errors.New("a valid hostname has a maximum of 253 ASCII characters")
 
 var ErrInvalidHostnameLabel = errors.New("each hostname label must be between 1-63 characters long")
 
-func (m *Middleware) validateHostname(s string) error {
-	if len(s) > 253 {
+var ErrInvalidPortSyntax = errors.New("cannot parse port number due to invalid syntax")
+
+var ErrInvalidPortNumber = errors.New("port number must be in the range [0:65535]")
+
+// validateHostAndPort returns an error if either the hostname or port number
+// in the server address is invalid.
+//
+// Hostname (archaically nodename) is a label that is assigned to a device
+// connected to a computer network and that is used to identify the device in
+// various forms of electronic communication, such as the World Wide Web.
+// Hostnames may be simple names consisting of a single word or phrase, or they
+// may be structured. Each hostname usually has at least one numeric network
+// address associated with it for routing packets for performance and other
+// reasons.
+//
+// Internet hostnames may have appended the name of a Domain Name System (DNS)
+// domain, separated from the host-specific label by a period ("dot"). In the
+// latter form, a hostname is also called a domain name. If the domain name is
+// completely specified, including a top-level domain of the Internet, then the
+// hostname is said to be a fully qualified domain name (FQDN). Hostnames that
+// include DNS domains are often stored in the Domain Name System together with
+// the IP addresses of the host they represent for the purpose of mapping the
+// hostname to an address, or the reverse process.
+//
+// Hostnames are composed of a sequence of labels concatenated with dots. For
+// example, "en.example.org" is a hostname. Each label must be from 1 to 63
+// characters long. The entire hostname, including the delimiting dots, has a
+// maximum of 253 ASCII characters.
+//
+// Reference: https://en.wikipedia.org/wiki/Hostname
+//
+// Port is a communication endpoint. At the software level, within an operating
+// system, a port is a logical construct that identifies a specific process or
+// a type of network service. A port is identified for each transport protocol
+// and address combination by a 16-bit unsigned number, known as the port
+// number.
+//
+// A port number is a 16-bit unsigned integer, thus ranging from 0 to 65535.
+//
+// For TCP, port number 0 is reserved and cannot be used, while for UDP, the
+// source port is optional and a value of zero means no port.
+//
+// A port number is always associated with an IP address of a host and the type
+// of transport protocol used for communication. It completes the destination
+// or origination network address of a message. Specific port numbers are
+// reserved to identify specific services so that an arriving packet can be
+// easily forwarded to a running application. For this purpose, port numbers
+// lower than 1024 identify the historically most commonly used services and
+// are called the well-known port numbers. Higher-numbered ports are available
+// for general use by applications and are known as ephemeral ports.
+//
+// Reference: https://en.wikipedia.org/wiki/Port_%28computer_networking%29
+func (m *Middleware) validateHostAndPort(addr string) error {
+	parts := strings.Split(addr, ":")
+
+	if len(parts) != 2 {
+		return ErrInvalidAddressFormat
+	}
+
+	if len(parts[0]) > 253 {
 		return ErrHostnameIsTooLong
 	}
 
-	p := strings.Split(s, ".")
+	p := strings.Split(parts[0], ".")
 
 	for i := 0; i < len(p); i++ {
 		if p[i] == "" || len(p[i]) > 63 {
 			return ErrInvalidHostnameLabel
 		}
+	}
+
+	num, err := strconv.Atoi(parts[1])
+
+	if err != nil {
+		return ErrInvalidPortSyntax
+	}
+
+	if num < 0 || num > 65535 {
+		return ErrInvalidPortNumber
 	}
 
 	return nil
@@ -59,8 +128,8 @@ func (m *Middleware) validateHostname(s string) error {
 // connections. Accepted connections are configured to enable
 // TCP keep-alives. If srv.Addr is blank, ":http" is used. The
 // method always returns a non-nil error.
-func (m *Middleware) ListenAndServe() error {
-	return m.startWebServer(func() error {
+func (m *Middleware) ListenAndServe(addr string) error {
+	return m.startWebServer(addr, func() error {
 		return m.serverInstance.ListenAndServe()
 	})
 }
@@ -70,10 +139,9 @@ func (m *Middleware) ListenAndServe() error {
 // matching private key for the server must be provided. If the certificate
 // is signed by a certificate authority, the certFile should be the concatenation
 // of the server's certificate, any intermediates, and the CA's certificate.
-func (m *Middleware) ListenAndServeTLS(certFile string, keyFile string, cfg *tls.Config) error {
-	return m.startWebServer(func() error {
+func (m *Middleware) ListenAndServeTLS(addr string, certFile string, keyFile string, cfg *tls.Config) error {
+	return m.startWebServer(addr, func() error {
 		m.serverInstance.TLSConfig = cfg /* TLS configuration */
-
 		return m.serverInstance.ListenAndServeTLS(certFile, keyFile)
 	})
 }
