@@ -243,13 +243,13 @@ func (m *Middleware) handleRequest(router *Router, w http.ResponseWriter, r *htt
 
 	if !ok {
 		// HTTP method not allowed, return “405 Method Not Allowed”.
-		http.Error(w, http.StatusText(405), http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
 	if r.URL.Path == "" || r.URL.Path[0] != '/' {
 		// URL prefix is invalid, return “400 Bad Request”.
-		http.Error(w, http.StatusText(400), http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 

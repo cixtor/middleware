@@ -180,13 +180,13 @@ func (r *Router) ServeFiles(root string, prefix string) http.HandlerFunc {
 
 		if fifo, err = os.Stat(raw); err != nil {
 			// requested resource does not exists; return 404 Not Found
-			http.Error(w, http.StatusText(404), http.StatusNotFound)
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
 
 		if fifo.IsDir() {
 			// requested resource is a directory; return 403 Forbidden
-			http.Error(w, http.StatusText(403), http.StatusForbidden)
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 			return
 		}
 
