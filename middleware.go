@@ -181,12 +181,12 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var query string
 	start := time.Now()
 	writer := response{w, 0, 0}
+	fullURL := r.URL.Path
 
 	if r.URL.RawQuery != "" {
-		query = "?" + r.URL.RawQuery
+		fullURL += "?" + r.URL.RawQuery
 	}
 
 	m.handleRequest(m.hosts[r.Host], &writer, r)
@@ -196,7 +196,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r.Host,
 		r.RemoteAddr,
 		r.Method,
-		r.URL.Path+query,
+		fullURL,
 		r.Proto,
 		writer.Status,
 		writer.Length,
