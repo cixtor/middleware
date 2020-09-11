@@ -110,7 +110,7 @@ var paramsKey = contextKey("MiddlewareParameter")
 // New returns a new initialized Middleware.
 //
 // By default, the HTTP response logger is enabled, and the text is written to
-// `/dev/stdout`. You can disable this by setting `m.Logger = nil` where “m” is
+// `/dev/stdout`. You can disable this by setting `m.Logger = nil` where "m" is
 // an instance of `middleware.New()`. You can also writes the logs to a buffer
 // or any other Go logger interface defined as `log.New()`.
 func New() *Middleware {
@@ -212,7 +212,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // defined URL doesn’t contains dynamic parameters, the function executes the
 // HTTP handler immediately if the URL path matches the request. If there are
 // dynamic parameters, the function checks if the URL contains enough data to
-// extract them, if there is not enough data, it responds with “404 Not Found“,
+// extract them, if there is not enough data, it responds with "404 Not Found",
 // otherwise, it attaches the values for the corresponding parameters to the
 // request context, then executes the HTTP handler.
 //
@@ -222,7 +222,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 //   Request URL: /foo/bar/example
 //
 // This request returns a "200 OK" and the HTTP handler can then obtain a copy
-// of the value for the “group” parameter using `middleware.Param()`. Or simply
+// of the value for the "group" parameter using `middleware.Param()`. Or simply
 // by reading the raw parameter from the request context.
 //
 // Here is an example of an invalid request:
@@ -234,21 +234,21 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 //   Request URL: /foo
 //   Request URL: /
 //
-// All these requests will return “404 Not Found” because none of them matches
+// All these requests will return "404 Not Found" because none of them matches
 // the defined URL. This is because trailing slashes are ignored, so even the
 // first attempt (which is similar to what the HTTP handler is expecting) will
-// fail as there is not enough data to set the value for the “group” parameter.
+// fail as there is not enough data to set the value for the "group" parameter.
 func (m *Middleware) handleRequest(router *Router, w http.ResponseWriter, r *http.Request) {
 	children, ok := router.nodes[r.Method]
 
 	if !ok {
-		// HTTP method not allowed, return “405 Method Not Allowed”.
+		// HTTP method not allowed, return "405 Method Not Allowed".
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
 	if r.URL.Path == "" || r.URL.Path[0] != '/' {
-		// URL prefix is invalid, return “400 Bad Request”.
+		// URL prefix is invalid, return "400 Bad Request".
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}

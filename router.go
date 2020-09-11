@@ -43,7 +43,7 @@ type route struct {
 type rpart struct {
 	// name is the raw text in the URL.
 	name string
-	// dyna is short for “dynamic”; true if `/^:\S+/` false otherwise
+	// dyna is short for "dynamic"; true if `/^:\S+/` false otherwise
 	dyna bool
 	// root is true if the route part is the first in the list.
 	root bool

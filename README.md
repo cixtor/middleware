@@ -69,9 +69,9 @@ router.STATIC("/var/www/public_html", "/assets")
 
 In the example above, we are assumming that a directory located at `/var/www/public_html/` exists. With that in mind, every request to an URL with the `/assets/` prefix will be handled by the `http.ServeFiles()` method as long as the requested resource is pointing to an existing file.
 
-A request to a nonexistent file returns “404 Not Found”.
+A request to a nonexistent file returns "404 Not Found".
 
-A request to a directory returns “403 Forbidden” to prevent directory listing attacks.
+A request to a directory returns "403 Forbidden" to prevent directory listing attacks.
 
 ## Graceful Shutdown
 
