@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+const nohost = "_"
+
 // errNoMatch represents a simple matching error.
 var errNoMatch = errors.New("no matching route")
 
@@ -117,7 +119,7 @@ func New() *Middleware {
 	m := new(Middleware)
 
 	m.Logger = log.New(os.Stdout, "", log.LstdFlags)
-	m.hosts = map[string]*Router{"_": newRouter()}
+	m.hosts = map[string]*Router{nohost: newRouter()}
 
 	return m
 }
@@ -355,42 +357,42 @@ func (m *Middleware) Host(tld string) *Router {
 
 // GET registers a GET endpoint for the default host.
 func (m *Middleware) GET(path string, fn http.HandlerFunc) {
-	m.hosts["_"].GET(path, fn)
+	m.hosts[nohost].GET(path, fn)
 }
 
 // POST registers a POST endpoint for the default host.
 func (m *Middleware) POST(path string, fn http.HandlerFunc) {
-	m.hosts["_"].POST(path, fn)
+	m.hosts[nohost].POST(path, fn)
 }
 
 // PUT registers a PUT endpoint for the default host.
 func (m *Middleware) PUT(path string, fn http.HandlerFunc) {
-	m.hosts["_"].PUT(path, fn)
+	m.hosts[nohost].PUT(path, fn)
 }
 
 // PATCH registers a PATCH endpoint for the default host.
 func (m *Middleware) PATCH(path string, fn http.HandlerFunc) {
-	m.hosts["_"].PATCH(path, fn)
+	m.hosts[nohost].PATCH(path, fn)
 }
 
 // DELETE registers a DELETE endpoint for the default host.
 func (m *Middleware) DELETE(path string, fn http.HandlerFunc) {
-	m.hosts["_"].DELETE(path, fn)
+	m.hosts[nohost].DELETE(path, fn)
 }
 
 // HEAD registers a HEAD endpoint for the default host.
 func (m *Middleware) HEAD(path string, fn http.HandlerFunc) {
-	m.hosts["_"].HEAD(path, fn)
+	m.hosts[nohost].HEAD(path, fn)
 }
 
 // OPTIONS registers an OPTIONS endpoint for the default host.
 func (m *Middleware) OPTIONS(path string, fn http.HandlerFunc) {
-	m.hosts["_"].OPTIONS(path, fn)
+	m.hosts[nohost].OPTIONS(path, fn)
 }
 
 // ServeFiles registers a GET and POST endpoint to handle arbitrary requests to
 // an existing folder with static files. The function registers the endpoints
 // against the default host.
 func (m *Middleware) ServeFiles(root string, prefix string) http.HandlerFunc {
-	return m.hosts["_"].ServeFiles(root, prefix)
+	return m.hosts[nohost].ServeFiles(root, prefix)
 }
