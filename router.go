@@ -156,17 +156,16 @@ func (r *Router) STATIC(folder string, urlPrefix string) {
 	node := route{
 		path:       urlPrefix,
 		glob:       true,
-		dispatcher: r.ServeFiles(folder, urlPrefix),
+		dispatcher: r.serveFiles(folder, urlPrefix),
 	}
 
+	r.nodes[http.MethodHead] = append(r.nodes[http.MethodHead], node)
 	r.nodes[http.MethodGet] = append(r.nodes[http.MethodGet], node)
 	r.nodes[http.MethodPost] = append(r.nodes[http.MethodPost], node)
 }
 
-// ServeFiles serves files from the given file system root.
-//
-// A pre-check is executed to prevent directory listing attacks.
-func (r *Router) ServeFiles(root string, prefix string) http.HandlerFunc {
+// serveFiles serves files from the root of the given file system.
+func (r *Router) serveFiles(root string, prefix string) http.HandlerFunc {
 	fs := http.FileServer(http.Dir(root))
 	handler := http.StripPrefix(prefix, fs)
 
