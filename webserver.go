@@ -98,11 +98,24 @@ func (m *Middleware) validateHostAndPort(addr string) error {
 		return ErrInvalidAddressFormat
 	}
 
-	if len(parts[0]) > 253 {
+	if err := m.validatePort(parts[1]); err != nil {
+		return err
+	}
+
+	return m.validateHost(parts[0])
+}
+
+func (m *Middleware) validateHost(host string) error {
+	// ignore cases like ":8080"
+	if host == "" {
+		return nil
+	}
+
+	if len(host) > 253 {
 		return ErrHostnameIsTooLong
 	}
 
-	p := strings.Split(parts[0], ".")
+	p := strings.Split(host, ".")
 
 	for i := 0; i < len(p); i++ {
 		if p[i] == "" || len(p[i]) > 63 {
@@ -110,7 +123,11 @@ func (m *Middleware) validateHostAndPort(addr string) error {
 		}
 	}
 
-	num, err := strconv.Atoi(parts[1])
+	return nil
+}
+
+func (m *Middleware) validatePort(port string) error {
+	num, err := strconv.Atoi(port)
 
 	if err != nil {
 		return ErrInvalidPortSyntax
