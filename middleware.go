@@ -178,8 +178,16 @@ func (m *Middleware) Use(f func(http.Handler) http.Handler) {
 // matches the request URL. Additional to the standard functionality this also
 // logs every direct HTTP request into the standard output.
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if _, ok := m.hosts[r.Host]; !ok {
-		http.Error(w, "unexpected host "+r.Host, http.StatusInternalServerError)
+	var router *Router
+
+	if len(m.hosts) == 1 {
+		router = m.hosts[nohost]
+	} else {
+		router = m.hosts[r.Host]
+	}
+
+	if router == nil {
+		http.Error(w, "Unexpected host "+r.Host, http.StatusInternalServerError)
 		return
 	}
 
@@ -191,7 +199,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fullURL += "?" + r.URL.RawQuery
 	}
 
-	m.handleRequest(m.hosts[r.Host], &writer, r)
+	m.handleRequest(router, &writer, r)
 
 	m.Logger.Printf(
 		"%s %s \"%s %s %s\" %d %d \"%s\" %v",
