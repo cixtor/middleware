@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+// nohost is the default hostname unique identifier.
 const nohost = "_"
 
 // errNoMatch represents a simple matching error.

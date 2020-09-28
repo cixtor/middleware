@@ -43,7 +43,7 @@ type route struct {
 type rpart struct {
 	// name is the raw text in the URL.
 	name string
-	// dyna is short for "dynamic"; true if `/^:\S+/` false otherwise
+	// dyna is short for "dynamic"; true if `/^:\S+/`, otherwise, false.
 	dyna bool
 	// root is true if the route part is the first in the list.
 	root bool
@@ -67,10 +67,7 @@ func (r *Router) register(method, path string, fn http.HandlerFunc) {
 
 	for idx, section := range parts {
 		if section == "" && idx == 0 {
-			node.parts = append(node.parts, rpart{
-				name: "<root>",
-				root: true,
-			})
+			node.parts = append(node.parts, rpart{root: true})
 			continue
 		}
 
@@ -84,10 +81,7 @@ func (r *Router) register(method, path string, fn http.HandlerFunc) {
 		}
 
 		if section[0] == ':' {
-			node.parts = append(node.parts, rpart{
-				name: section,
-				dyna: true,
-			})
+			node.parts = append(node.parts, rpart{name: section, dyna: true})
 			continue
 		}
 
@@ -170,14 +164,9 @@ func (r *Router) serveFiles(root string, prefix string) http.HandlerFunc {
 	handler := http.StripPrefix(prefix, fs)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var err error
-		var raw string
-		var fifo os.FileInfo
+		fifo, err := os.Stat(root + r.URL.Path[len(prefix):])
 
-		// convert URL into file system path.
-		raw = root + r.URL.Path[len(prefix):]
-
-		if fifo, err = os.Stat(raw); err != nil {
+		if err != nil {
 			// requested resource does not exists; return 404 Not Found
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
