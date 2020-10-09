@@ -27,7 +27,7 @@ type route struct {
 	// glob is true if the route has a global catcher.
 	glob bool
 	// dispatcher is the HTTP handler function for the route.
-	dispatcher http.HandlerFunc
+	dispatcher http.Handler
 }
 
 // rpart represents each part of the route.
@@ -61,7 +61,7 @@ func newRouter() *Router {
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
-func (r *Router) register(method, path string, fn http.HandlerFunc) {
+func (r *Router) register(method, path string, fn http.Handler) {
 	node := route{path: path, dispatcher: fn}
 	parts := strings.Split(path, "/")
 
@@ -89,6 +89,11 @@ func (r *Router) register(method, path string, fn http.HandlerFunc) {
 	}
 
 	r.nodes[method] = append(r.nodes[method], node)
+}
+
+// Handle registers the handler for the given pattern.
+func (r *Router) Handle(method string, path string, h http.Handler) {
+	r.register(method, path, h)
 }
 
 // GET requests a representation of the specified resource.

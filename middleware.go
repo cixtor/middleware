@@ -265,7 +265,7 @@ func (m *Middleware) handleRequest(router *Router, w http.ResponseWriter, r *htt
 	}
 
 	// iterate against the routes to find a handler.
-	var handler http.HandlerFunc
+	var handler http.Handler
 	child, params, err := m.findHandler(r, children)
 
 	// send "404 Not Found" if there is no handler.
@@ -286,7 +286,7 @@ func (m *Middleware) handleRequest(router *Router, w http.ResponseWriter, r *htt
 		return
 	}
 
-	handler(w, r)
+	handler.ServeHTTP(w, r)
 }
 
 // notFoundHandler
@@ -362,6 +362,11 @@ func (m *Middleware) Host(tld string) *Router {
 		m.hosts[tld] = newRouter()
 	}
 	return m.hosts[tld]
+}
+
+// Handle registers the handler for the given pattern.
+func (m *Middleware) Handle(method string, path string, h http.Handler) {
+	m.hosts[nohost].Handle(method, path, h)
 }
 
 // GET registers a GET endpoint for the default host.
