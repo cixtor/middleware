@@ -179,12 +179,11 @@ func (m *Middleware) Use(f func(http.Handler) http.Handler) {
 // matches the request URL. Additional to the standard functionality this also
 // logs every direct HTTP request into the standard output.
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var router *Router
+	router := m.hosts[nohost]
 
-	if len(m.hosts) == 1 {
-		router = m.hosts[nohost]
-	} else {
-		router = m.hosts[r.Host]
+	// Use the host specific router, if available.
+	if hostRouter, ok := m.hosts[r.Host]; ok {
+		router = hostRouter
 	}
 
 	if router == nil {
