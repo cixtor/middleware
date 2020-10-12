@@ -464,3 +464,22 @@ func TestMultipleHosts(t *testing.T) {
 	curl(t, "GET", "foo.test", "http://localhost:60337/hello/john", []byte("Hello from foo.test (john)"))
 	curl(t, "GET", "bar.test", "http://localhost:60337/hello/alice", []byte("Hello from bar.test (alice)"))
 }
+
+func TestDefaultHost(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		defer router.Shutdown()
+		router.GET("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello %s", middleware.Param(r, "name"))
+		})
+		router.Host("foo.test").GET("/world/:name", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "World %s", middleware.Param(r, "name"))
+		})
+		_ = router.ListenAndServe(":60338")
+	}()
+
+	curl(t, "GET", "localhost", "http://localhost:60338/hello/john", []byte("Hello john"))
+	curl(t, "GET", "foo.test", "http://localhost:60338/world/earth", []byte("World earth"))
+	curl(t, "GET", "bar.test", "http://localhost:60338/anything", []byte("404 page not found\n"))
+}

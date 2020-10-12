@@ -182,7 +182,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	router := m.hosts[nohost]
 
 	// Use the host specific router, if available.
-	if hostRouter, ok := m.hosts[r.Host]; ok {
+	if hostRouter, ok := m.hosts[r.Host]; ok && hostRouter != nil {
 		router = hostRouter
 	}
 
