@@ -3,10 +3,7 @@ package middleware
 import (
 	"context"
 	"errors"
-	"io/ioutil"
-	"log"
 	"net/http"
-	"os"
 	"path"
 	"strings"
 	"time"
@@ -41,7 +38,7 @@ type Middleware struct {
 	// multiple goroutines; it guarantees to serialize access to the Writer.
 	//
 	// Ref: https://en.wikipedia.org/wiki/Server_log
-	Logger *log.Logger
+	Logger Logger
 
 	// NotFound handles page requests to non-existing endpoints.
 	//
@@ -119,7 +116,7 @@ var paramsKey = contextKey("MiddlewareParameter")
 func New() *Middleware {
 	m := new(Middleware)
 
-	m.Logger = log.New(os.Stdout, "", log.LstdFlags)
+	m.Logger = NewBasicLogger() /* basic access logger */
 	m.hosts = map[string]*Router{nohost: newRouter()}
 
 	return m
@@ -127,7 +124,7 @@ func New() *Middleware {
 
 // DiscardLogs writes all the logs to `/dev/null`.
 func (m *Middleware) DiscardLogs() {
-	m.Logger.SetOutput(ioutil.Discard)
+	m.Logger = &EmptyLogger{}
 }
 
 // compose follows the HTTP handler chain to execute additional middlewares.
@@ -193,26 +190,23 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	start := time.Now()
 	writer := response{w, 0, 0}
-	fullURL := r.URL.Path
-
-	if r.URL.RawQuery != "" {
-		fullURL += "?" + r.URL.RawQuery
-	}
-
 	m.handleRequest(router, &writer, r)
+	dur := time.Since(start)
 
-	m.Logger.Printf(
-		"%s %s \"%s %s %s\" %d %d \"%s\" %v",
-		r.Host,
-		r.RemoteAddr,
-		r.Method,
-		fullURL,
-		r.Proto,
-		writer.Status,
-		writer.Length,
-		r.Header.Get("User-Agent"),
-		time.Since(start),
-	)
+	m.Logger.Log(AccessLog{
+		StartTime:     start,
+		Host:          r.Host,
+		RemoteAddr:    r.RemoteAddr,
+		Method:        r.Method,
+		Path:          r.URL.Path,
+		Query:         r.URL.Query(),
+		Protocol:      r.Proto,
+		StatusCode:    writer.Status,
+		BytesReceived: r.ContentLength,
+		BytesSent:     writer.Length,
+		Header:        r.Header,
+		Duration:      dur,
+	})
 }
 
 // handleRequest responds to an HTTP request.

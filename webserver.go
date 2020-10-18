@@ -28,7 +28,7 @@ func (m *Middleware) startWebServer(addr string, f func() error) error {
 
 	go m.gracefulServerShutdown()
 
-	m.Logger.Println("listening on", addr)
+	m.Logger.ListeningOn(addr)
 
 	return f() /* ListenAndServe OR ListenAndServeTLS */
 }
@@ -191,10 +191,5 @@ func (m *Middleware) gracefulServerShutdown() {
 
 	defer cancel()
 
-	if err := m.serverInstance.Shutdown(ctx); err != nil {
-		m.Logger.Println("sigint;", err)
-		return
-	}
-
-	m.Logger.Println("server shutdown")
+	m.Logger.Shutdown(m.serverInstance.Shutdown(ctx))
 }
