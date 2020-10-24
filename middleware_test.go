@@ -1,7 +1,6 @@
 package middleware_test
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io/ioutil"
@@ -11,10 +10,6 @@ import (
 
 	"github.com/cixtor/middleware"
 )
-
-var buffer = bytes.Buffer{}
-var devnul = bufio.NewWriter(&buffer)
-var logger = log.New(devnul, "", log.LstdFlags)
 
 func curl(t *testing.T, method string, hostname string, target string, expected []byte) {
 	var err error
@@ -50,7 +45,7 @@ func curl(t *testing.T, method string, hostname string, target string, expected 
 func TestIndex(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World")
@@ -85,7 +80,7 @@ func TestUse(t *testing.T) {
 
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		router.Use(lorem)
 		router.Use(ipsum)
 		router.Use(dolor)
@@ -129,7 +124,7 @@ func TestUse2(t *testing.T) {
 
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "<4:foobar>")
@@ -146,7 +141,7 @@ func TestUse2(t *testing.T) {
 func TestPOST(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.POST("/foobar", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World POST")
@@ -160,7 +155,7 @@ func TestPOST(t *testing.T) {
 func TestNotFound(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World GET")
@@ -174,7 +169,7 @@ func TestNotFound(t *testing.T) {
 func TestNotFoundSimilar(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.GET("/lorem/ipsum/dolor", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World GET")
@@ -188,7 +183,7 @@ func TestNotFoundSimilar(t *testing.T) {
 func TestNotFoundInvalid(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		router.NotFound = nil
 		defer router.Shutdown()
 		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
@@ -203,7 +198,7 @@ func TestNotFoundInvalid(t *testing.T) {
 func TestNotFoundCustom(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "404 page does not exist\n")
 		})
@@ -220,7 +215,7 @@ func TestNotFoundCustom(t *testing.T) {
 func TestNotFoundCustomWithInterceptor(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "404 missing page\n")
 		})
@@ -246,7 +241,7 @@ func TestNotFoundCustomWithInterceptor(t *testing.T) {
 func TestDirectoryListing(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.STATIC(".", "/assets")
 		log.Fatal(router.ListenAndServe(":60305"))
@@ -263,7 +258,7 @@ func TestDirectoryListing(t *testing.T) {
 func TestSingleParam(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.PUT("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello %s", middleware.Param(r, "name"))
@@ -277,7 +272,7 @@ func TestSingleParam(t *testing.T) {
 func TestMultiParam(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.PATCH("/:group/:section", func(w http.ResponseWriter, r *http.Request) {
 			group := middleware.Param(r, "group")
@@ -293,7 +288,7 @@ func TestMultiParam(t *testing.T) {
 func TestMultiParamPrefix(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.DELETE("/foo/:group/:section", func(w http.ResponseWriter, r *http.Request) {
 			group := middleware.Param(r, "group")
@@ -309,7 +304,7 @@ func TestMultiParamPrefix(t *testing.T) {
 func TestComplexParam(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.PUT("/account/:name/info", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello %s", middleware.Param(r, "name"))
@@ -323,7 +318,7 @@ func TestComplexParam(t *testing.T) {
 func TestServeFiles(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.STATIC(".", "/cdn")
 		_ = router.ListenAndServe(":60311")
@@ -342,7 +337,7 @@ func TestServeFiles(t *testing.T) {
 func TestServeFilesFake(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.GET("/updates/appcast.xml", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "<xml></xml>")
@@ -356,7 +351,7 @@ func TestServeFilesFake(t *testing.T) {
 func TestServeFilesFakeScript(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.GET("/tag/js/gpt.js", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "(function(E){})")
@@ -371,7 +366,7 @@ func TestServeFilesFakeScript(t *testing.T) {
 func TestTrailingSlash(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.GET("/hello/world/", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World")
@@ -385,7 +380,7 @@ func TestTrailingSlash(t *testing.T) {
 func TestTrailingSlashDynamic(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.POST("/api/:id/store/", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "store")
@@ -399,7 +394,7 @@ func TestTrailingSlashDynamic(t *testing.T) {
 func TestTrailingSlashDynamicMultiple(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.POST("/api/:id/store/", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "dynamic")
@@ -413,7 +408,7 @@ func TestTrailingSlashDynamicMultiple(t *testing.T) {
 func TestMultipleRoutes(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.GET("/hello/world/", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World")
@@ -431,7 +426,7 @@ func TestMultipleRoutes(t *testing.T) {
 func TestMultipleDynamic(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.GET("/hello/:first/:last/info", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(
@@ -450,7 +445,7 @@ func TestMultipleDynamic(t *testing.T) {
 func TestMultipleHosts(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.Host("foo.test").GET("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello from foo.test (%s)", middleware.Param(r, "name"))
@@ -468,7 +463,7 @@ func TestMultipleHosts(t *testing.T) {
 func TestDefaultHost(t *testing.T) {
 	go func() {
 		router := middleware.New()
-		router.Logger = logger
+		router.DiscardLogs()
 		defer router.Shutdown()
 		router.GET("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello %s", middleware.Param(r, "name"))
