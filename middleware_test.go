@@ -478,3 +478,83 @@ func TestDefaultHost(t *testing.T) {
 	curl(t, "GET", "foo.test", "http://localhost:60338/world/earth", []byte("World earth"))
 	curl(t, "GET", "bar.test", "http://localhost:60338/anything", []byte("404 page not found\n"))
 }
+
+type telemetry struct {
+	called bool
+	latest middleware.AccessLog
+}
+
+func (t *telemetry) ListeningOn(addr string) {
+}
+
+func (t *telemetry) Shutdown(err error) {
+}
+
+func (t *telemetry) Log(data middleware.AccessLog) {
+	t.called = true
+	t.latest = data
+}
+
+func TestResponseCallback(t *testing.T) {
+	tracer := &telemetry{}
+
+	go func() {
+		router := middleware.New()
+		router.Logger = tracer
+		defer router.Shutdown()
+		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		_ = router.ListenAndServe(":60339")
+	}()
+
+	curl(t, "GET", "localhost", "http://localhost:60339/?hello=world&foo=bar", []byte("Hello World"))
+
+	if !tracer.called {
+		t.Fatal("http tracer was not called")
+	}
+
+	if tracer.latest.Host != "localhost" {
+		t.Fatalf("unexpected value for Host: %s", tracer.latest.Host)
+	}
+
+	if tracer.latest.RemoteUser != "" {
+		t.Fatalf("unexpected value for RemoteUser: %s", tracer.latest.RemoteUser)
+	}
+
+	if tracer.latest.Method != "GET" {
+		t.Fatalf("unexpected value for Method: %s", tracer.latest.Method)
+	}
+
+	if tracer.latest.Path != "/" {
+		t.Fatalf("unexpected value for Path: %s", tracer.latest.Path)
+	}
+
+	if params := tracer.latest.Query.Encode(); params != "foo=bar&hello=world" {
+		t.Fatalf("unexpected value for Query: %s", params)
+	}
+
+	if tracer.latest.Protocol != "HTTP/1.1" {
+		t.Fatalf("unexpected value for Protocol: %s", tracer.latest.Protocol)
+	}
+
+	if tracer.latest.StatusCode != 200 {
+		t.Fatalf("unexpected value for StatusCode: %d", tracer.latest.StatusCode)
+	}
+
+	if tracer.latest.BytesReceived != 0 {
+		t.Fatalf("unexpected value for BytesReceived: %d", tracer.latest.BytesReceived)
+	}
+
+	if tracer.latest.BytesSent != 11 {
+		t.Fatalf("unexpected value for BytesSent: %d", tracer.latest.BytesSent)
+	}
+
+	if ua := tracer.latest.Header.Get("User-Agent"); ua != "Go-http-client/1.1" {
+		t.Fatalf("unexpected value for BytesSent: %s", ua)
+	}
+
+	if tracer.latest.Duration <= 0 {
+		t.Fatalf("unexpected value for Duration: %v", tracer.latest.Duration)
+	}
+}
