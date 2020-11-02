@@ -282,15 +282,17 @@ func (m *Middleware) handleRequest(router *Router, w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
-// notFoundHandler
-func (m *Middleware) notFoundHandler() http.HandlerFunc {
+// notFoundHandler returns a request handler that replies to each request with
+// a "404 page not found" message, either using custom code attached to the
+// router via Middleware.NotFound or with the default Go HTTP package.
+func (m *Middleware) notFoundHandler() http.Handler {
 	if m.NotFound != nil {
 		// custom 404 http handler.
-		return m.NotFound.ServeHTTP
+		return m.NotFound
 	}
 
 	// default 404 http handler.
-	return http.NotFound
+	return http.NotFoundHandler()
 }
 
 // findHandler
