@@ -15,11 +15,11 @@
 //   var router = middleware.New()
 //
 //   func init() {
-//       router.IdleTimeout = 10 * time.Second
-//       router.ReadTimeout = 10 * time.Second
-//       router.WriteTimeout = 10 * time.Second
-//       router.ShutdownTimeout = 10 * time.Second
-//       router.ReadHeaderTimeout = 10 * time.Second
+//       router.IdleTimeout = time.Second * 10
+//       router.ReadTimeout = time.Second * 10
+//       router.WriteTimeout = time.Second * 10
+//       router.ShutdownTimeout = time.Second * 10
+//       router.ReadHeaderTimeout = time.Second * 10
 //
 //       router.STATIC("/var/www/public_html", "/assets")
 //
@@ -29,14 +29,13 @@
 //   func main() {
 //       shutdown := make(chan os.Signal, 1)
 //       signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
-//       go func() {
-//           <-shutdown
-//           router.Shutdown()
-//       }()
-//       router.ListenAndServe()
+//       go func() { log.Fatal(router.ListenAndServe(":4000")) }()
+//       <-shutdown
+//       router.Shutdown()
+//       log.Println("finished")
 //   }
 //
 //   func index(w http.ResponseWriter, r *http.Request) {
-//       w.Write([]byte("Hello World!\n"))
+//       _, _ = w.Write([]byte("Hello World!\n"))
 //   }
 package middleware

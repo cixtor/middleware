@@ -70,7 +70,7 @@ A graceful shutdown can be added with the following code:
 
 ```golang
 import (
-    "fmt"
+    "log"
     "os"
     "os/signal"
     "syscall"
@@ -84,7 +84,7 @@ func main() {
         <-shutdown
         srv.Shutdown()
         […] // close resources.
-        fmt.Println("finished")
+        log.Println("finished")
     }()
 
     log.Fatal(srv.ListenAndServe(":3000"))

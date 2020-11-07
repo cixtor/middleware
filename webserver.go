@@ -140,11 +140,10 @@ func (m *Middleware) validatePort(port string) error {
 	return nil
 }
 
-// ListenAndServe listens on the TCP network address srv.Addr
-// and then calls server.Serve to handle requests on incoming
-// connections. Accepted connections are configured to enable
-// TCP keep-alives. If srv.Addr is blank, ":http" is used. The
-// method always returns a non-nil error.
+// ListenAndServe listens on a TCP network address and then calls server.Serve
+// to handle requests on incoming connections. All accepted connections are
+// configured to enable TCP keep-alives. If the hostname is blank, ":http" is
+// used. The method always returns a non-nil error.
 func (m *Middleware) ListenAndServe(addr string) error {
 	return m.startWebServer(addr, func() error {
 		return m.serverInstance.ListenAndServe()

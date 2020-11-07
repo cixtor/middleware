@@ -257,7 +257,6 @@ func (m *Middleware) handleRequest(router *Router, w http.ResponseWriter, r *htt
 		return
 	}
 
-	// iterate against the routes to find a handler.
 	var handler http.Handler
 	child, params, err := m.findHandler(r, children)
 
@@ -295,7 +294,7 @@ func (m *Middleware) notFoundHandler() http.Handler {
 	return http.NotFoundHandler()
 }
 
-// findHandler
+// findHandler returns a request handler that corresponds to the request URL.
 func (m *Middleware) findHandler(r *http.Request, children []route) (route, []httpParam, error) {
 	for _, child := range children {
 		// side-by-side match; no params.
@@ -316,7 +315,7 @@ func (m *Middleware) findHandler(r *http.Request, children []route) (route, []ht
 	return route{}, []httpParam{}, errNoMatch
 }
 
-// findHandlerParams
+// findHandlerParams returns the URL parameters associated to the request path.
 func (m *Middleware) findHandlerParams(r *http.Request, child route) ([]httpParam, error) {
 	var params []httpParam
 
