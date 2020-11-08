@@ -43,7 +43,7 @@ func (w *response) WriteHeader(status int) {
 // Handlers should read before writing if possible to maximize compatibility.
 func (w *response) Write(b []byte) (int, error) {
 	if w.Status == 0 {
-		w.Status = 200
+		w.Status = http.StatusOK
 	}
 
 	w.Length = len(b)

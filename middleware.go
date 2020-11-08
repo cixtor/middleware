@@ -258,6 +258,7 @@ func (m *Middleware) handleRequest(router *Router, w http.ResponseWriter, r *htt
 	}
 
 	var handler http.Handler
+
 	child, params, err := m.findHandler(r, children)
 
 	// send "404 Not Found" if there is no handler.
@@ -355,6 +356,7 @@ func (m *Middleware) Host(tld string) *Router {
 	if _, ok := m.hosts[tld]; !ok {
 		m.hosts[tld] = newRouter()
 	}
+
 	return m.hosts[tld]
 }
 

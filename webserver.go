@@ -174,16 +174,13 @@ func (m *Middleware) Shutdown() {
 	m.serverShutdown <- true
 }
 
-// defaultShutdownTimeout is the maximum time before server halt.
-const defaultShutdownTimeout = 5 * time.Second
-
 // gracefulServerShutdown shutdowns the server.
 func (m *Middleware) gracefulServerShutdown() {
 	<-m.serverShutdown /* wait shutdown */
 
 	if m.ShutdownTimeout == 0 {
 		// NOTES(cixtor): avoid context deadline exceeded.
-		m.ShutdownTimeout = defaultShutdownTimeout
+		m.ShutdownTimeout = time.Second
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), m.ShutdownTimeout)

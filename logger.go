@@ -120,15 +120,18 @@ func (l *BasicLogger) Shutdown(err error) {
 		l.logger.Fatal("logger.shutdown", err)
 		return
 	}
+
 	l.logger.Println("server shutdown")
 }
 
 // Log implements the Log method for the Logger interface.
 func (l *BasicLogger) Log(data AccessLog) {
 	fullURL := data.Path
+
 	if params := data.Query.Encode(); params != "" {
 		fullURL += "?" + params
 	}
+
 	l.logger.Printf(
 		"%s %s \"%s %s %s\" %d %d \"%s\" %v",
 		data.Host,
