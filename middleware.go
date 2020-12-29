@@ -365,6 +365,11 @@ func (m *Middleware) Handle(method string, path string, h http.Handler) {
 	m.hosts[nohost].Handle(method, path, h)
 }
 
+// Register gives direct access to the HTTP method registration function.
+func (m *Middleware) Register(method string, path string, fn http.HandlerFunc) {
+	m.hosts[nohost].Register(method, path, fn)
+}
+
 // GET registers a GET endpoint for the default host.
 func (m *Middleware) GET(path string, fn http.HandlerFunc) {
 	m.hosts[nohost].GET(path, fn)

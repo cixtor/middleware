@@ -96,6 +96,11 @@ func (r *Router) Handle(method string, path string, h http.Handler) {
 	r.register(method, path, h)
 }
 
+// Register gives direct access to the HTTP method registration function.
+func (r *Router) Register(method string, path string, fn http.HandlerFunc) {
+	r.register(method, path, fn)
+}
+
 // GET requests a representation of the specified resource.
 //
 // Note that GET should not be used for operations that cause side-effects,
