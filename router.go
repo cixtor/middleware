@@ -150,6 +150,11 @@ func (r *Router) OPTIONS(path string, fn http.HandlerFunc) {
 	r.register(http.MethodOptions, path, fn)
 }
 
+// CONNECT is a shortcut for middleware.handle("CONNECT", path, handle).
+func (r *Router) CONNECT(path string, fn http.HandlerFunc) {
+	r.register(http.MethodConnect, path, fn)
+}
+
 // STATIC refers to the static assets folder, a place where people can store
 // files that change with low frequency like images, documents, archives and
 // to some extend CSS and JavaScript files too. These files are usually better
