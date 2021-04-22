@@ -155,6 +155,11 @@ func (r *Router) CONNECT(path string, fn http.HandlerFunc) {
 	r.register(http.MethodConnect, path, fn)
 }
 
+// TRACE is a shortcut for middleware.handle("TRACE", path, handle).
+func (r *Router) TRACE(path string, fn http.HandlerFunc) {
+	r.register(http.MethodTrace, path, fn)
+}
+
 // STATIC refers to the static assets folder, a place where people can store
 // files that change with low frequency like images, documents, archives and
 // to some extend CSS and JavaScript files too. These files are usually better
