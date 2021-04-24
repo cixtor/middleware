@@ -361,13 +361,8 @@ func (m *Middleware) Host(tld string) *Router {
 }
 
 // Handle registers the handler for the given pattern.
-func (m *Middleware) Handle(method string, path string, h http.Handler) {
-	m.hosts[nohost].Handle(method, path, h)
-}
-
-// Register gives direct access to the HTTP method registration function.
-func (m *Middleware) Register(method string, path string, fn http.HandlerFunc) {
-	m.hosts[nohost].Register(method, path, fn)
+func (m *Middleware) Handle(method string, path string, fn http.HandlerFunc) {
+	m.hosts[nohost].Handle(method, path, fn)
 }
 
 // GET registers a GET endpoint for the default host.
@@ -405,12 +400,12 @@ func (m *Middleware) OPTIONS(path string, fn http.HandlerFunc) {
 	m.hosts[nohost].OPTIONS(path, fn)
 }
 
-// CONNECT registers an CONNECT endpoint for the default host.
+// CONNECT registers a CONNECT endpoint for the default host.
 func (m *Middleware) CONNECT(path string, fn http.HandlerFunc) {
 	m.hosts[nohost].CONNECT(path, fn)
 }
 
-// TRACE registers an TRACE endpoint for the default host.
+// TRACE registers a TRACE endpoint for the default host.
 func (m *Middleware) TRACE(path string, fn http.HandlerFunc) {
 	m.hosts[nohost].TRACE(path, fn)
 }

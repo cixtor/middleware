@@ -479,6 +479,20 @@ func TestDefaultHost(t *testing.T) {
 	curl(t, "GET", "bar.test", "http://localhost:60338/anything", []byte("404 page not found\n"))
 }
 
+func TestHandle(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.Handle("PROPFIND", "/foobar", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		_ = router.ListenAndServe(":60340")
+	}()
+
+	curl(t, "PROPFIND", "localhost", "http://localhost:60340/foobar", []byte("Hello World"))
+}
+
 type telemetry struct {
 	called bool
 	latest middleware.AccessLog

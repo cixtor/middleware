@@ -92,12 +92,7 @@ func (r *Router) register(method, path string, fn http.Handler) {
 }
 
 // Handle registers the handler for the given pattern.
-func (r *Router) Handle(method string, path string, h http.Handler) {
-	r.register(method, path, h)
-}
-
-// Register gives direct access to the HTTP method registration function.
-func (r *Router) Register(method string, path string, fn http.HandlerFunc) {
+func (r *Router) Handle(method string, path string, fn http.HandlerFunc) {
 	r.register(method, path, fn)
 }
 
