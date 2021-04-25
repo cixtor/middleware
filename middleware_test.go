@@ -493,6 +493,20 @@ func TestHandle(t *testing.T) {
 	curl(t, "PROPFIND", "localhost", "http://localhost:60340/foobar", []byte("Hello World"))
 }
 
+func TestCONNECT(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.CONNECT("/foobar", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		_ = router.ListenAndServe(":60341")
+	}()
+
+	curl(t, "CONNECT", "localhost", "http://localhost:60341/foobar", []byte("Hello World"))
+}
+
 type telemetry struct {
 	called bool
 	latest middleware.AccessLog
