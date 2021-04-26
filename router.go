@@ -160,6 +160,11 @@ func (r *Router) COPY(path string, fn http.HandlerFunc) {
 	r.register("COPY", path, fn)
 }
 
+// LOCK is a shortcut for middleware.handle("WebDAV.LOCK", path, handle).
+func (r *Router) LOCK(path string, fn http.HandlerFunc) {
+	r.register("LOCK", path, fn)
+}
+
 // STATIC refers to the static assets folder, a place where people can store
 // files that change with low frequency like images, documents, archives and
 // to some extend CSS and JavaScript files too. These files are usually better
