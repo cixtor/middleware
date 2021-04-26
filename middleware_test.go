@@ -521,6 +521,20 @@ func TestTRACE(t *testing.T) {
 	curl(t, "TRACE", "localhost", "http://localhost:60342/foobar", []byte("Hello World"))
 }
 
+func TestCOPY(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.COPY("/foobar", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		_ = router.ListenAndServe(":60343")
+	}()
+
+	curl(t, "COPY", "localhost", "http://localhost:60343/foobar", []byte("Hello World"))
+}
+
 type telemetry struct {
 	called bool
 	latest middleware.AccessLog

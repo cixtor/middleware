@@ -410,6 +410,11 @@ func (m *Middleware) TRACE(path string, fn http.HandlerFunc) {
 	m.hosts[nohost].TRACE(path, fn)
 }
 
+// COPY registers a WebDAV COPY endpoint for the default host.
+func (m *Middleware) COPY(path string, fn http.HandlerFunc) {
+	m.hosts[nohost].COPY(path, fn)
+}
+
 // STATIC registers an endpoint to handle GET and POST requests to static files
 // in a folder. The function registers the endpoints against the default host.
 // The function returns "404 Not Found" if the file does not exist or if the
