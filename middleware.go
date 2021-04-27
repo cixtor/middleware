@@ -420,6 +420,11 @@ func (m *Middleware) LOCK(path string, fn http.HandlerFunc) {
 	m.hosts[nohost].LOCK(path, fn)
 }
 
+// MKCOL registers a WebDAV MKCOL endpoint for the default host.
+func (m *Middleware) MKCOL(path string, fn http.HandlerFunc) {
+	m.hosts[nohost].MKCOL(path, fn)
+}
+
 // STATIC registers an endpoint to handle GET and POST requests to static files
 // in a folder. The function registers the endpoints against the default host.
 // The function returns "404 Not Found" if the file does not exist or if the

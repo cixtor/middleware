@@ -549,6 +549,20 @@ func TestLOCK(t *testing.T) {
 	curl(t, "LOCK", "localhost", "http://localhost:60344/foobar", []byte("Hello World"))
 }
 
+func TestMKCOL(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.MKCOL("/foobar", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		_ = router.ListenAndServe(":60345")
+	}()
+
+	curl(t, "MKCOL", "localhost", "http://localhost:60345/foobar", []byte("Hello World"))
+}
+
 type telemetry struct {
 	called bool
 	latest middleware.AccessLog

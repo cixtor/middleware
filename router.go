@@ -165,6 +165,11 @@ func (r *Router) LOCK(path string, fn http.HandlerFunc) {
 	r.register("LOCK", path, fn)
 }
 
+// MKCOL is a shortcut for middleware.handle("WebDAV.MKCOL", path, handle).
+func (r *Router) MKCOL(path string, fn http.HandlerFunc) {
+	r.register("MKCOL", path, fn)
+}
+
 // STATIC refers to the static assets folder, a place where people can store
 // files that change with low frequency like images, documents, archives and
 // to some extend CSS and JavaScript files too. These files are usually better
