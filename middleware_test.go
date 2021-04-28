@@ -577,6 +577,20 @@ func TestMOVE(t *testing.T) {
 	curl(t, "MOVE", "localhost", "http://localhost:60346/foobar", []byte("Hello World"))
 }
 
+func TestPROPFIND(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.PROPFIND("/foobar", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		_ = router.ListenAndServe(":60347")
+	}()
+
+	curl(t, "PROPFIND", "localhost", "http://localhost:60347/foobar", []byte("Hello World"))
+}
+
 type telemetry struct {
 	called bool
 	latest middleware.AccessLog

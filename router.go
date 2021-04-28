@@ -175,6 +175,11 @@ func (r *Router) MOVE(path string, fn http.HandlerFunc) {
 	r.register("MOVE", path, fn)
 }
 
+// PROPFIND is a shortcut for middleware.handle("WebDAV.PROPFIND", path, handle).
+func (r *Router) PROPFIND(path string, fn http.HandlerFunc) {
+	r.register("PROPFIND", path, fn)
+}
+
 // STATIC refers to the static assets folder, a place where people can store
 // files that change with low frequency like images, documents, archives and
 // to some extend CSS and JavaScript files too. These files are usually better
