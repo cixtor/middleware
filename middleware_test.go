@@ -591,6 +591,20 @@ func TestPROPFIND(t *testing.T) {
 	curl(t, "PROPFIND", "localhost", "http://localhost:60347/foobar", []byte("Hello World"))
 }
 
+func TestPROPPATCH(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.PROPPATCH("/foobar", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		_ = router.ListenAndServe(":60348")
+	}()
+
+	curl(t, "PROPPATCH", "localhost", "http://localhost:60348/foobar", []byte("Hello World"))
+}
+
 type telemetry struct {
 	called bool
 	latest middleware.AccessLog
