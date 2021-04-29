@@ -185,6 +185,11 @@ func (r *Router) PROPPATCH(path string, fn http.HandlerFunc) {
 	r.register("PROPPATCH", path, fn)
 }
 
+// UNLOCK is a shortcut for middleware.handle("WebDAV.UNLOCK", path, handle).
+func (r *Router) UNLOCK(path string, fn http.HandlerFunc) {
+	r.register("UNLOCK", path, fn)
+}
+
 // STATIC refers to the static assets folder, a place where people can store
 // files that change with low frequency like images, documents, archives and
 // to some extend CSS and JavaScript files too. These files are usually better

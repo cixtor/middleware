@@ -440,6 +440,11 @@ func (m *Middleware) PROPPATCH(path string, fn http.HandlerFunc) {
 	m.hosts[nohost].PROPPATCH(path, fn)
 }
 
+// UNLOCK registers a WebDAV UNLOCK endpoint for the default host.
+func (m *Middleware) UNLOCK(path string, fn http.HandlerFunc) {
+	m.hosts[nohost].UNLOCK(path, fn)
+}
+
 // STATIC registers an endpoint to handle GET and POST requests to static files
 // in a folder. The function registers the endpoints against the default host.
 // The function returns "404 Not Found" if the file does not exist or if the

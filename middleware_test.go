@@ -605,6 +605,20 @@ func TestPROPPATCH(t *testing.T) {
 	curl(t, "PROPPATCH", "localhost", "http://localhost:60348/foobar", []byte("Hello World"))
 }
 
+func TestUNLOCK(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.UNLOCK("/foobar", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Hello World")
+		})
+		_ = router.ListenAndServe(":60349")
+	}()
+
+	curl(t, "UNLOCK", "localhost", "http://localhost:60349/foobar", []byte("Hello World"))
+}
+
 type telemetry struct {
 	called bool
 	latest middleware.AccessLog
