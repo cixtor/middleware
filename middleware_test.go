@@ -479,21 +479,21 @@ func TestDefaultHost(t *testing.T) {
 	curl(t, "GET", "bar.test", "http://localhost:60338/anything", []byte("404 page not found\n"))
 }
 
-func TestHandle(t *testing.T) {
+func TestMethodHandle(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.DiscardLogs()
 		defer router.Shutdown()
-		router.Handle("PROPFIND", "/foobar", func(w http.ResponseWriter, r *http.Request) {
+		router.Handle("HELLOWORLD", "/foobar", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Hello World")
 		})
 		_ = router.ListenAndServe(":60340")
 	}()
 
-	curl(t, "PROPFIND", "localhost", "http://localhost:60340/foobar", []byte("Hello World"))
+	curl(t, "HELLOWORLD", "localhost", "http://localhost:60340/foobar", []byte("Hello World"))
 }
 
-func TestCONNECT(t *testing.T) {
+func TestMethodCONNECT(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.DiscardLogs()
@@ -507,7 +507,7 @@ func TestCONNECT(t *testing.T) {
 	curl(t, "CONNECT", "localhost", "http://localhost:60341/foobar", []byte("Hello World"))
 }
 
-func TestTRACE(t *testing.T) {
+func TestMethodTRACE(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.DiscardLogs()
@@ -521,7 +521,7 @@ func TestTRACE(t *testing.T) {
 	curl(t, "TRACE", "localhost", "http://localhost:60342/foobar", []byte("Hello World"))
 }
 
-func TestCOPY(t *testing.T) {
+func TestMethodCOPY(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.DiscardLogs()
@@ -535,7 +535,7 @@ func TestCOPY(t *testing.T) {
 	curl(t, "COPY", "localhost", "http://localhost:60343/foobar", []byte("Hello World"))
 }
 
-func TestLOCK(t *testing.T) {
+func TestMethodLOCK(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.DiscardLogs()
@@ -549,7 +549,7 @@ func TestLOCK(t *testing.T) {
 	curl(t, "LOCK", "localhost", "http://localhost:60344/foobar", []byte("Hello World"))
 }
 
-func TestMKCOL(t *testing.T) {
+func TestMethodMKCOL(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.DiscardLogs()
@@ -563,7 +563,7 @@ func TestMKCOL(t *testing.T) {
 	curl(t, "MKCOL", "localhost", "http://localhost:60345/foobar", []byte("Hello World"))
 }
 
-func TestMOVE(t *testing.T) {
+func TestMethodMOVE(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.DiscardLogs()
@@ -577,7 +577,7 @@ func TestMOVE(t *testing.T) {
 	curl(t, "MOVE", "localhost", "http://localhost:60346/foobar", []byte("Hello World"))
 }
 
-func TestPROPFIND(t *testing.T) {
+func TestMethodPROPFIND(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.DiscardLogs()
@@ -591,7 +591,7 @@ func TestPROPFIND(t *testing.T) {
 	curl(t, "PROPFIND", "localhost", "http://localhost:60347/foobar", []byte("Hello World"))
 }
 
-func TestPROPPATCH(t *testing.T) {
+func TestMethodPROPPATCH(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.DiscardLogs()
@@ -605,7 +605,7 @@ func TestPROPPATCH(t *testing.T) {
 	curl(t, "PROPPATCH", "localhost", "http://localhost:60348/foobar", []byte("Hello World"))
 }
 
-func TestUNLOCK(t *testing.T) {
+func TestMethodUNLOCK(t *testing.T) {
 	go func() {
 		router := middleware.New()
 		router.DiscardLogs()
