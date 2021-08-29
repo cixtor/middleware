@@ -638,6 +638,24 @@ func TestMethodUNLOCK(t *testing.T) {
 	curl(t, "UNLOCK", "localhost", "http://localhost:60349/foobar", []byte("Hello World"))
 }
 
+func TestAmbiguousPath(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.GET("/:package", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "package")
+		})
+		router.GET("/:package/-/:archive", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "package/archive")
+		})
+		_ = router.ListenAndServe(":60350")
+	}()
+
+	curl(t, "GET", "localhost", "http://localhost:60350/foobar", []byte("package"))
+	curl(t, "GET", "localhost", "http://localhost:60350/foobar/-/foobar.tgz", []byte("package/archive"))
+}
+
 type telemetry struct {
 	called bool
 	latest middleware.AccessLog
