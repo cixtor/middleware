@@ -24,6 +24,7 @@ func (m *Middleware) startWebServer(addr string, f func() error) error {
 		ReadTimeout:       m.ReadTimeout,
 		WriteTimeout:      m.WriteTimeout,
 		ReadHeaderTimeout: m.ReadHeaderTimeout,
+		ErrorLog:          m.ErrorLog,
 	}
 
 	go m.gracefulServerShutdown()

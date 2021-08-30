@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"path"
 	"strings"
@@ -39,6 +40,11 @@ type Middleware struct {
 	//
 	// Ref: https://en.wikipedia.org/wiki/Server_log
 	Logger Logger
+
+	// ErrorLog specifies an optional logger for errors accepting connections,
+	// unexpected behavior from handlers, and underlying FileSystem errors. If
+	// nil, logging is done via the log package's standard logger.
+	ErrorLog *log.Logger
 
 	// NotFound handles page requests to non-existing endpoints.
 	//
