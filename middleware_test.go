@@ -656,6 +656,28 @@ func TestAmbiguousPath(t *testing.T) {
 	curl(t, "GET", "localhost", "http://localhost:60350/foobar/-/foobar.tgz", []byte("package/archive"))
 }
 
+func TestAmbiguousPath2(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.GET("/:package", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "package")
+		})
+		router.GET("/:module/:package", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "module/package")
+		})
+		router.GET("/:package/-/:archive", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "package/archive")
+		})
+		_ = router.ListenAndServe(":60351")
+	}()
+
+	curl(t, "GET", "localhost", "http://localhost:60351/foobar", []byte("package"))
+	curl(t, "GET", "localhost", "http://localhost:60351/@babel/core", []byte("module/package"))
+	curl(t, "GET", "localhost", "http://localhost:60351/foobar/-/foobar.tgz", []byte("package/archive"))
+}
+
 type telemetry struct {
 	called bool
 	latest middleware.AccessLog
