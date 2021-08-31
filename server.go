@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// startWebServer setups and starts the web server.
-func (m *Middleware) startWebServer(addr string, f func() error) error {
+// startServer setups and starts the web server.
+func (m *Middleware) startServer(addr string, f func() error) error {
 	if err := m.validateHostAndPort(addr); err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (m *Middleware) validatePort(port string) error {
 // configured to enable TCP keep-alives. If the hostname is blank, ":http" is
 // used. The method always returns a non-nil error.
 func (m *Middleware) ListenAndServe(addr string) error {
-	return m.startWebServer(addr, func() error {
+	return m.startServer(addr, func() error {
 		return m.serverInstance.ListenAndServe()
 	})
 }
@@ -157,7 +157,7 @@ func (m *Middleware) ListenAndServe(addr string) error {
 // is signed by a certificate authority, the certFile should be the concatenation
 // of the server's certificate, any intermediates, and the CA's certificate.
 func (m *Middleware) ListenAndServeTLS(addr string, certFile string, keyFile string, cfg *tls.Config) error {
-	return m.startWebServer(addr, func() error {
+	return m.startServer(addr, func() error {
 		m.serverInstance.TLSConfig = cfg /* TLS configuration */
 		return m.serverInstance.ListenAndServeTLS(certFile, keyFile)
 	})
