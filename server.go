@@ -15,7 +15,6 @@ func (m *Middleware) startServer(addr string, f func() error) error {
 		return err
 	}
 
-	m.serverShutdown = make(chan bool)
 	m.serverInstance = &http.Server{
 		Addr:              addr,
 		Handler:           m,
@@ -26,6 +25,8 @@ func (m *Middleware) startServer(addr string, f func() error) error {
 		ErrorLog:          m.ErrorLog,
 	}
 
+	// Configure the server shutdown procedure.
+	m.serverShutdown = make(chan bool)
 	go m.gracefulServerShutdown()
 
 	m.Logger.ListeningOn(addr)
@@ -174,13 +175,15 @@ func (m *Middleware) Shutdown() {
 	m.serverShutdown <- true
 }
 
-// gracefulServerShutdown shutdowns the server.
+// gracefulServerShutdown stops the server.
 func (m *Middleware) gracefulServerShutdown() {
 	<-m.serverShutdown /* wait shutdown */
 
 	ctx, cancel := context.WithTimeout(context.Background(), m.ShutdownTimeout)
 
 	defer cancel()
+
+	m.PreShutdown()
 
 	m.Logger.Shutdown(m.serverInstance.Shutdown(ctx))
 }

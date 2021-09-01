@@ -102,6 +102,9 @@ type Middleware struct {
 	// Default: 100ms (to avoid context deadline exceeded).
 	ShutdownTimeout time.Duration
 
+	// PreShutdown runs before the server starts the shutdown process.
+	PreShutdown func()
+
 	chain func(http.Handler) http.Handler
 
 	hosts map[string]*Router
@@ -170,6 +173,8 @@ func New() *Middleware {
 	m.IdleTimeout = time.Second * 2
 	m.ShutdownTimeout = time.Millisecond * 100
 
+	// Register default shutdown functions.
+	m.PreShutdown = func() {}
 	return m
 }
 
