@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // startServer setups and starts the web server.
@@ -20,10 +19,10 @@ func (m *Middleware) startServer(addr string, f func() error) error {
 	m.serverInstance = &http.Server{
 		Addr:              addr,
 		Handler:           m,
-		IdleTimeout:       m.IdleTimeout,
 		ReadTimeout:       m.ReadTimeout,
-		WriteTimeout:      m.WriteTimeout,
 		ReadHeaderTimeout: m.ReadHeaderTimeout,
+		WriteTimeout:      m.WriteTimeout,
+		IdleTimeout:       m.IdleTimeout,
 		ErrorLog:          m.ErrorLog,
 	}
 
@@ -178,11 +177,6 @@ func (m *Middleware) Shutdown() {
 // gracefulServerShutdown shutdowns the server.
 func (m *Middleware) gracefulServerShutdown() {
 	<-m.serverShutdown /* wait shutdown */
-
-	if m.ShutdownTimeout == 0 {
-		// NOTES(cixtor): avoid context deadline exceeded.
-		m.ShutdownTimeout = time.Second
-	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), m.ShutdownTimeout)
 

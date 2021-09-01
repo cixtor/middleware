@@ -62,35 +62,45 @@ type Middleware struct {
 	// Wide Web.
 	NotFound http.Handler
 
-	// IdleTimeout is the maximum amount of time to wait for the next request
-	// when keep-alives are enabled. If IdleTimeout is zero, the value of
-	// ReadTimeout is used. If both are zero, there is no timeout.
-	IdleTimeout time.Duration
-
 	// ReadTimeout is the maximum duration for reading the entire request,
 	// including the body. Because ReadTimeout does not let Handlers make
 	// per-request decisions on each request body's acceptable deadline or
 	// upload rate, most users will prefer to use ReadHeaderTimeout. It is
 	// valid to use them both.
+	//
+	// Default: 2s
 	ReadTimeout time.Duration
-
-	// WriteTimeout is the maximum duration before timing out writes of the
-	// response. It is reset whenever a new request's header is read. Like
-	// ReadTimeout, it does not let Handlers make decisions on a per-request
-	// basis.
-	WriteTimeout time.Duration
-
-	// ShutdownTimeout is the maximum duration before cancelling the server
-	// shutdown context. This allows the developer to guarantee the termination
-	// of the server even if a client is keeping a connection idle.
-	ShutdownTimeout time.Duration
 
 	// ReadHeaderTimeout is the amount of time allowed to read request headers.
 	// The connection's read deadline is reset after reading the headers and
 	// the Handler can decide what is considered too slow for the body. If
 	// ReadHeaderTimeout is zero, the value of ReadTimeout is used. If both are
 	// zero, there is no timeout.
+	//
+	// Default: 1s
 	ReadHeaderTimeout time.Duration
+
+	// WriteTimeout is the maximum duration before timing out writes of the
+	// response. It is reset whenever a new request's header is read. Like
+	// ReadTimeout, it does not let Handlers make decisions on a per-request
+	// basis.
+	//
+	// Default: 2s
+	WriteTimeout time.Duration
+
+	// IdleTimeout is the maximum amount of time to wait for the next request
+	// when keep-alives are enabled. If IdleTimeout is zero, the value of
+	// ReadTimeout is used. If both are zero, there is no timeout.
+	//
+	// Default: 2s
+	IdleTimeout time.Duration
+
+	// ShutdownTimeout is the maximum duration before cancelling the server
+	// shutdown context. This allows the developer to guarantee the termination
+	// of the server even if a client is keeping a connection idle.
+	//
+	// Default: 100ms (to avoid context deadline exceeded).
+	ShutdownTimeout time.Duration
 
 	chain func(http.Handler) http.Handler
 
@@ -119,11 +129,46 @@ var paramsKey = contextKey("MiddlewareParameter")
 // `/dev/stdout`. You can disable this by setting `m.Logger = nil` where "m" is
 // an instance of `middleware.New()`. You can also writes the logs to a buffer
 // or any other Go logger interface defined as `log.New()`.
+//
+// Default timeout settings:
+//
+//   - ReadTimeout: 2s
+//   - ReadHeaderTimeout: 1s
+//   - WriteTimeout: 2s
+//   - IdleTimeout: 2s
+//   - ShutdownTimeout: 100ms
+//
+// Based on the following http.Request schema:
+//
+//	┌─────────────────────────────────────────http.Request─────────────────────────────────────────┐
+//	│ Accept                                                                                       │
+//	│ ┌──────┬───────────┬─────────────────────────────────┬──────────────────────┬──────────────┐ │
+//	│ │      │    TLS    │             Request             │       Response       │              │ │
+//	│ │ Wait │ Handshake ├──────────────────────┬──────────┼───────────┬──────────┤     Idle     │ │
+//	│ │      │           │       Headers        │   Body   │  Headers  │   Body   │              │ │
+//	│ └──────┴───────────┴──────────────────────┴──────────┴───────────┴──────────┴──────────────┘ │
+//	│                                           ├───────────ServerHTTP────────────┤                │
+//	│                                                                                IdleTimeout   │
+//	│                    ├───ReadHeaderTimeout──┤                                 ├─(keep-alive)─┤ │
+//	│                                                                                              │
+//	│ ├────────────────────ReadTimeout─────────────────────┤                                       │
+//	│                                                                                              │
+//	│ ├ ─ ─ ─ ─ ─WriteTimeout (TLS only)─ ─ ─ ─ ┼──────────WriteTimeout───────────┤                │
+//	│                                                                                              │
+//	│                                           ├──────http.TimeoutHandler────────┤                │
+//	└──────────────────────────────────────────────────────────────────────────────────────────────┘
 func New() *Middleware {
 	m := new(Middleware)
 
 	m.Logger = NewBasicLogger() /* basic access logger */
 	m.hosts = map[string]*Router{nohost: newRouter()}
+
+	// Default timeout values.
+	m.ReadTimeout = time.Second * 2
+	m.ReadHeaderTimeout = time.Second * 1
+	m.WriteTimeout = time.Second * 2
+	m.IdleTimeout = time.Second * 2
+	m.ShutdownTimeout = time.Millisecond * 100
 
 	return m
 }
