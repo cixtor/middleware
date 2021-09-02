@@ -2,10 +2,12 @@ package middleware_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"syscall"
 	"testing"
 
 	"github.com/cixtor/middleware"
@@ -40,6 +42,24 @@ func curl(t *testing.T, method string, hostname string, target string, expected 
 		t.Fatalf("%s %s\nexpected: %q\nreceived: %q", method, target, expected, out)
 		return
 	}
+}
+
+func shouldNotCurl(t *testing.T, method string, hostname string, target string) {
+	req, err := http.NewRequest(method, target, nil)
+
+	if err != nil {
+		t.Fatalf("http.NewRequest %s", err)
+		return
+	}
+
+	req.Host = hostname
+
+	if _, err := http.DefaultClient.Do(req); errors.Is(err, syscall.ECONNREFUSED) {
+		// Detect "connection refused" error and return as a successful call.
+		return
+	}
+
+	t.Fatalf("%s %s should have failed", method, target)
 }
 
 func TestIndex(t *testing.T) {
