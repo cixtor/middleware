@@ -105,6 +105,17 @@ type Middleware struct {
 	// PreShutdown runs before the server starts the shutdown process.
 	PreShutdown func()
 
+	// OnShutdown is executed while the server is shutting down.
+	//
+	// This function relies on http.Server.RegisterOnShutdown function, which
+	// registers a function to call on Shutdown. This can be used to gracefully
+	// shutdown connections that have undergone ALPN protocol upgrade or that
+	// have been hijacked. The function should start protocol-specific graceful
+	// shutdown, but should not wait for shutdown to complete.
+	//
+	// Note: The program may stop before the function runs.
+	OnShutdown func()
+
 	chain func(http.Handler) http.Handler
 
 	hosts map[string]*Router
@@ -175,6 +186,8 @@ func New() *Middleware {
 
 	// Register default shutdown functions.
 	m.PreShutdown = func() {}
+	m.OnShutdown = func() {}
+
 	return m
 }
 

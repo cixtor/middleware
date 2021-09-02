@@ -26,6 +26,7 @@ func (m *Middleware) startServer(addr string, f func() error) error {
 	}
 
 	// Configure the server shutdown procedure.
+	m.serverInstance.RegisterOnShutdown(m.OnShutdown)
 	m.serverShutdown = make(chan bool)
 	go m.gracefulServerShutdown()
 
