@@ -779,28 +779,42 @@ func TestResponseCallback(t *testing.T) {
 }
 
 func TestShutdown(t *testing.T) {
+	router := middleware.New()
+	router.DiscardLogs()
+	router.GET("/s", func(w http.ResponseWriter, r *http.Request) { fmt.Fprintf(w, "XD") })
+
+	go router.ListenAndServe(":60309")
+
+	curl(t, "GET", "localhost", "http://localhost:60309/s", []byte("XD"))
+	router.Shutdown()
+	shouldNotCurl(t, "GET", "localhost", "http://localhost:60309/s")
+}
+
+func TestShutdownWithChannel(t *testing.T) {
+	done := false
 	stop := make(chan bool, 1)
-	done := make(chan bool, 1)
+	next := make(chan bool, 1)
 
 	router := middleware.New()
 	router.DiscardLogs()
-	router.GET("/index", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "hello")
-	})
+	router.GET("/swc", func(w http.ResponseWriter, r *http.Request) { fmt.Fprintf(w, ":D") })
 
 	go func() {
 		<-stop
 		router.Shutdown()
-		done <- true
+		next <- true
+		done = true
 	}()
 
-	go func() {
-		router.ListenAndServe(":60309")
-	}()
+	go router.ListenAndServe(":60310")
 
-	curl(t, "GET", "localhost", "http://localhost:60309/index", []byte("hello"))
+	curl(t, "GET", "localhost", "http://localhost:60310/swc", []byte(":D"))
 	stop <- true // Call middleware.Shutdown to stop the server.
 
-	<-done // Wait for middleware.Shutdown to finish.
-	shouldNotCurl(t, "GET", "localhost", "http://localhost:60309/index")
+	<-next // Wait for middleware.Shutdown to finish.
+	shouldNotCurl(t, "GET", "localhost", "http://localhost:60310/swc")
+
+	if !done {
+		t.Fatal("goroutine with middleware.Shutdown did not run correctly")
+	}
 }
