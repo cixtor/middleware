@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"syscall"
 	"testing"
 
@@ -790,17 +791,23 @@ func TestShutdown(t *testing.T) {
 	shouldNotCurl(t, "GET", "localhost", "http://localhost:60309/s")
 }
 
+type CustomSignal int
+
+func (CustomSignal) Signal() {}
+
+func (CustomSignal) String() string { return "custom signal" }
+
 func TestShutdownWithChannel(t *testing.T) {
 	done := false
-	stop := make(chan bool, 1)
+	quit := make(chan os.Signal, 1)
 	next := make(chan bool, 1)
 
 	router := middleware.New()
 	router.DiscardLogs()
-	router.GET("/swc", func(w http.ResponseWriter, r *http.Request) { fmt.Fprintf(w, ":D") })
+	router.GET("/swc", func(w http.ResponseWriter, r *http.Request) { fmt.Fprintf(w, ";D") })
 
 	go func() {
-		<-stop
+		<-quit
 		router.Shutdown()
 		next <- true
 		done = true
@@ -808,8 +815,8 @@ func TestShutdownWithChannel(t *testing.T) {
 
 	go router.ListenAndServe(":60310")
 
-	curl(t, "GET", "localhost", "http://localhost:60310/swc", []byte(":D"))
-	stop <- true // Call middleware.Shutdown to stop the server.
+	curl(t, "GET", "localhost", "http://localhost:60310/swc", []byte(";D"))
+	quit <- CustomSignal(60310) // Call middleware.Shutdown to stop the server.
 
 	<-next // Wait for middleware.Shutdown to finish.
 	shouldNotCurl(t, "GET", "localhost", "http://localhost:60310/swc")
