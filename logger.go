@@ -117,11 +117,11 @@ func (l *BasicLogger) ListeningOn(addr string) {
 // Shutdown implements the Shutdown method for the Logger interface.
 func (l *BasicLogger) Shutdown(err error) {
 	if err != nil {
-		l.logger.Fatal("logger.shutdown", err)
+		l.logger.Fatalf("server closed (err=%s)", err)
 		return
 	}
 
-	l.logger.Println("server shutdown")
+	l.logger.Println("server closed", "(ok)")
 }
 
 // Log implements the Log method for the Logger interface.

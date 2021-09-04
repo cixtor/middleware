@@ -32,7 +32,7 @@ import (
 func main() {
     srv := middleware.New()
     srv.GET("/", index)
-    log.Fatal(srv.ListenAndServe(":3000"))
+    srv.ListenAndServe(":3000")
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
@@ -66,7 +66,7 @@ A request to a nonexistent file returns "404 Not Found".
 
 ## Graceful Shutdown
 
-A graceful shutdown can be added with the following code:
+You can implement a graceful shutdown with the following code:
 
 ```golang
 import (
@@ -77,19 +77,23 @@ import (
 }
 
 func main() {
-    shutdown := make(chan os.Signal, 1)
-    signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
-
-    go func() {
-        <-shutdown
-        srv.Shutdown()
-        […] // close resources.
-        log.Println("finished")
-    }()
-
-    log.Fatal(srv.ListenAndServe(":3000"))
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+    go func() { <-quit; /* close resources */ ; srv.Shutdown() }()
+    srv.ListenAndServe(":3000")
+    fmt.Println("finished")
 }
 ```
+
+Common kill signals:
+
+| Signal | Value | Effect | Notes |
+|--------|-------|--------|-------|
+| `SIGHUP` | 1 | Hangup ||
+| `SIGINT` | 2 | Interrupt from keyboard ||
+| `SIGKILL` | 9 | Kill signal | Cannot be caught, blocked or ignored |
+| `SIGTERM` | 15 | Termination signal ||
+| `SIGSTOP` | 17,19,23 | Stop the process | Cannot be caught, blocked or ignored |
 
 ## TLS Support
 

@@ -102,9 +102,6 @@ type Middleware struct {
 	// Default: 100ms (to avoid context deadline exceeded).
 	ShutdownTimeout time.Duration
 
-	// PreShutdown runs before the server starts the shutdown process.
-	PreShutdown func()
-
 	// OnShutdown is executed while the server is shutting down.
 	//
 	// This function relies on http.Server.RegisterOnShutdown function, which
@@ -112,8 +109,6 @@ type Middleware struct {
 	// shutdown connections that have undergone ALPN protocol upgrade or that
 	// have been hijacked. The function should start protocol-specific graceful
 	// shutdown, but should not wait for shutdown to complete.
-	//
-	// Note: The program may stop before the function runs.
 	OnShutdown func()
 
 	chain func(http.Handler) http.Handler
@@ -176,6 +171,7 @@ func New() *Middleware {
 
 	m.Logger = NewBasicLogger() /* basic access logger */
 	m.hosts = map[string]*Router{nohost: newRouter()}
+	m.OnShutdown = func() { /* shutting down... */ }
 
 	// Default timeout values.
 	m.ReadTimeout = time.Second * 2
@@ -183,10 +179,6 @@ func New() *Middleware {
 	m.WriteTimeout = time.Second * 2
 	m.IdleTimeout = time.Second * 2
 	m.ShutdownTimeout = time.Millisecond * 100
-
-	// Register default shutdown functions.
-	m.PreShutdown = func() {}
-	m.OnShutdown = func() {}
 
 	return m
 }

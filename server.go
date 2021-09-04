@@ -25,14 +25,22 @@ func (m *Middleware) startServer(addr string, f func() error) error {
 		ErrorLog:          m.ErrorLog,
 	}
 
-	// Configure the server shutdown procedure.
+	// Configure additional shutdown operations.
 	m.serverInstance.RegisterOnShutdown(m.OnShutdown)
-	m.serverShutdown = make(chan bool)
-	go m.gracefulServerShutdown()
 
 	m.Logger.ListeningOn(addr)
 
-	return f() /* ListenAndServe OR ListenAndServeTLS */
+	err := f() /* ListenAndServe OR ListenAndServeTLS */
+
+	// Ignore "http: Server closed" errors as benign.
+	if err != nil && errors.Is(err, http.ErrServerClosed) {
+		m.Logger.Shutdown(nil)
+		return nil
+	}
+
+	m.Logger.Shutdown(err)
+
+	return err
 }
 
 var ErrInvalidAddressFormat = errors.New("server address must be [string]:[0-65535]")
@@ -172,19 +180,8 @@ func (m *Middleware) ListenAndServeTLS(addr string, certFile string, keyFile str
 // If the provided context expires before the shutdown is complete, Shutdown
 // returns the context's error, otherwise it returns any error returned from
 // closing the Server's underlying Listener(s).
-func (m *Middleware) Shutdown() {
-	m.serverShutdown <- true
-}
-
-// gracefulServerShutdown stops the server.
-func (m *Middleware) gracefulServerShutdown() {
-	<-m.serverShutdown /* wait shutdown */
-
+func (m *Middleware) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), m.ShutdownTimeout)
-
 	defer cancel()
-
-	m.PreShutdown()
-
-	m.Logger.Shutdown(m.serverInstance.Shutdown(ctx))
+	return m.serverInstance.Shutdown(ctx)
 }
