@@ -18,41 +18,50 @@ import (
 // HTTP status code, bytes served, user agent, and referrer are typically added.
 // This data can be combined into a single document, or separated into distinct
 // logs, such as an access log, error log, or referrer log.
+//
+// If you want to extend the basic logger instead of override it, you can
+// embed it into your own using a private struct field, then use that field
+// to call the corresponding methods of the parent struct.
+//
+//	type CustomLogger struct {
+//	    parent middleware.Logger
+//	}
+//	func NewCustomLogger() middleware.Logger {
+//	    return &CustomLogger{
+//	        parent: middleware.NewBasicLogger(),
+//	    }
+//	}
+//	func (l CustomLogger) Log(data middleware.AccessLog) {
+//	    l.parent.Log(data)
+//	}
+//
+// Example, request tracing using Prometheus:
+//
+//	var srv = middleware.New()
+//	var counter = prometheus.NewCounterVec(...)
+//	func init() {
+//	    srv.Logger = NewCustomLogger()
+//	    prometheus.MustRegister(counter)
+//	    srv.Handle(http.MethodGet, "/metrics", promhttp.Handler())
+//	}
+//	type CustomLogger struct {
+//	    parent middleware.Logger
+//	}
+//	func NewCustomLogger() middleware.Logger {
+//	    return &CustomLogger{
+//	        parent: middleware.NewBasicLogger(),
+//	    }
+//	}
+//	func (l CustomLogger) Log(data middleware.AccessLog) {
+//	    counter.With(prometheus.Labels{"host": data.Host}).Inc()
+//	    l.parent.Log(data)
+//	}
 type Logger interface {
 	// ListeningOn is called once, just before the execution of ListenAndServe.
 	ListeningOn(string)
 	// Shutdown is called once, immediately after the graceful server shutdown.
 	Shutdown(error)
 	// Log is called every time the web server handles a request.
-	//
-	// Below is an example of how to implement request tracing using Prometheus:
-	//
-	//   var router = middleware.New()
-	//   var counter = prometheus.NewCounterVec(...)
-	//   func init() {
-	//       router.Logger = &Logger{}
-	//       prometheus.MustRegister(counter)
-	//       router.Handle(http.MethodGet, "/metrics", promhttp.Handler())
-	//   }
-	//   type Logger struct {}
-	//   func (b *Logger) Log(data middleware.AccessLog) {
-	//       counter.With(prometheus.Labels{"host": data.Host}).Inc()
-	//   }
-	//
-	// If you want to extend the basic logger instead of override it, you can
-	// embed it into your own using a private struct field, then use that field
-	// to call the corresponding methods of the parent struct.
-	//
-	//   type Logger struct {
-	//       parent middleware.Logger
-	//   }
-	//   func NewLogger() middleware.Logger {
-	//       return &Logger{parent: middleware.NewBasicLogger()}
-	//   }
-	//   func (b *Logger) Log(data middleware.AccessLog) {
-	//       // ... custom logging algorithm.
-	//       b.parent.Log(data)
-	//   }
 	Log(AccessLog)
 }
 
@@ -85,17 +94,17 @@ type AccessLog struct {
 	Duration      time.Duration
 }
 
-// EmptyLogger implements the Logger interface to discard access logs.
-type EmptyLogger struct{}
+// emptyLogger implements the Logger interface to discard access logs.
+type emptyLogger struct{}
 
 // ListeningOn implements the ListeningOn method for the Logger interface.
-func (l *EmptyLogger) ListeningOn(addr string) {}
+func (l emptyLogger) ListeningOn(addr string) {}
 
 // Shutdown implements the Shutdown method for the Logger interface.
-func (l *EmptyLogger) Shutdown(err error) {}
+func (l emptyLogger) Shutdown(err error) {}
 
 // Log implements the Log method for the Logger interface.
-func (l *EmptyLogger) Log(data AccessLog) {}
+func (l emptyLogger) Log(data AccessLog) {}
 
 // BasicLogger implements the Logger interface and the NCSA_HTTPd log format.
 type BasicLogger struct {
@@ -110,12 +119,12 @@ func NewBasicLogger() Logger {
 }
 
 // ListeningOn implements the ListeningOn method for the Logger interface.
-func (l *BasicLogger) ListeningOn(addr string) {
+func (l BasicLogger) ListeningOn(addr string) {
 	l.logger.Println("listening on", addr)
 }
 
 // Shutdown implements the Shutdown method for the Logger interface.
-func (l *BasicLogger) Shutdown(err error) {
+func (l BasicLogger) Shutdown(err error) {
 	if err != nil {
 		l.logger.Fatalf("server closed (err=%s)", err)
 		return
@@ -125,7 +134,7 @@ func (l *BasicLogger) Shutdown(err error) {
 }
 
 // Log implements the Log method for the Logger interface.
-func (l *BasicLogger) Log(data AccessLog) {
+func (l BasicLogger) Log(data AccessLog) {
 	fullURL := data.Path
 
 	if params := data.Query.Encode(); params != "" {

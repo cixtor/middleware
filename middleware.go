@@ -169,7 +169,7 @@ var paramsKey = contextKey("MiddlewareParameter")
 func New() *Middleware {
 	m := new(Middleware)
 
-	m.Logger = NewBasicLogger() /* basic access logger */
+	m.Logger = NewBasicLogger() /* basic access log */
 	m.hosts = map[string]*Router{nohost: newRouter()}
 	m.OnShutdown = func() { /* shutting down... */ }
 
@@ -185,7 +185,7 @@ func New() *Middleware {
 
 // DiscardLogs writes all the logs to `/dev/null`.
 func (m *Middleware) DiscardLogs() {
-	m.Logger = &EmptyLogger{}
+	m.Logger = &emptyLogger{}
 }
 
 // compose follows the HTTP handler chain to execute additional middlewares.

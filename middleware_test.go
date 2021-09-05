@@ -704,13 +704,13 @@ type telemetry struct {
 	latest middleware.AccessLog
 }
 
-func (t *telemetry) ListeningOn(addr string) {
+func (t telemetry) ListeningOn(addr string) {
 }
 
-func (t *telemetry) Shutdown(err error) {
+func (t telemetry) Shutdown(err error) {
 }
 
-func (t *telemetry) Log(data middleware.AccessLog) {
+func (t telemetry) Log(data middleware.AccessLog) {
 	t.called = true
 	t.latest = data
 }

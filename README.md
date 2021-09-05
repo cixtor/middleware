@@ -164,3 +164,5 @@ foo(
 * Error logs are sent to `os.Stderr`
 * Access logs are sent to `os.Stdout`
 * Disable all logs using `srv.DiscardLogs()`
+* Implement the `middleware.Logger` interface to use your own logger
+* Read `middleware.Logger` docs to implement request tracing (Prometheus)
