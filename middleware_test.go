@@ -825,3 +825,22 @@ func TestShutdownWithChannel(t *testing.T) {
 		t.Fatal("goroutine with middleware.Shutdown did not run correctly")
 	}
 }
+
+func TestShutdownAddon(t *testing.T) {
+	done := false
+
+	router := middleware.New()
+	router.DiscardLogs()
+	router.OnShutdown = func() { done = true }
+	router.GET("/s", func(w http.ResponseWriter, r *http.Request) { fmt.Fprintf(w, "XD") })
+
+	go router.ListenAndServe(":60320")
+
+	curl(t, "GET", "localhost", "http://localhost:60320/s", []byte("XD"))
+	router.Shutdown()
+	shouldNotCurl(t, "GET", "localhost", "http://localhost:60320/s")
+
+	if !done {
+		t.Fatal("middleware.OnShutdown function did not run")
+	}
+}
