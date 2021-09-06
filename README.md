@@ -40,16 +40,38 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-## Sane Timeouts
+## Server Timeouts
 
-By default, all the timeouts are configured to five seconds, you can change them like this:
+Override one or more of the (default) server timeouts:
 
 ```golang
-srv.IdleTimeout       = time.Second * 10
-srv.ReadTimeout       = time.Second * 10
-srv.WriteTimeout      = time.Second * 10
-srv.ShutdownTimeout   = time.Second * 10
-srv.ReadHeaderTimeout = time.Second * 10
+srv.ReadTimeout       = time.Second * 2
+srv.ReadHeaderTimeout = time.Second * 1
+srv.WriteTimeout      = time.Second * 2
+srv.IdleTimeout       = time.Second * 2
+srv.ShutdownTimeout   = time.Millisecond * 100
+```
+
+Base your calculations on this HTTP request diagram:
+
+```plain
+┌─────────────────────────────────────────http.Request─────────────────────────────────────────┐
+│ Accept                                                                                       │
+│ ┌──────┬───────────┬─────────────────────────────────┬──────────────────────┬──────────────┐ │
+│ │      │    TLS    │             Request             │       Response       │              │ │
+│ │ Wait │ Handshake ├──────────────────────┬──────────┼───────────┬──────────┤     Idle     │ │
+│ │      │           │       Headers        │   Body   │  Headers  │   Body   │              │ │
+│ └──────┴───────────┴──────────────────────┴──────────┴───────────┴──────────┴──────────────┘ │
+│                                           ├───────────ServerHTTP────────────┤                │
+│                                                                                IdleTimeout   │
+│                    ├───ReadHeaderTimeout──┤                                 ├─(keep-alive)─┤ │
+│                                                                                              │
+│ ├────────────────────ReadTimeout─────────────────────┤                                       │
+│                                                                                              │
+│ ├ ─ ─ ─ ─ ─WriteTimeout (TLS only)─ ─ ─ ─ ┼──────────WriteTimeout───────────┤                │
+│                                                                                              │
+│                                           ├──────http.TimeoutHandler────────┤                │
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Serving Static Files
@@ -127,13 +149,13 @@ Using a regular `http.Handler` you can attach more middlewares to the router:
 ```golang
 var srv = middleware.New()
 
-func foo(next http.Handler) http.Handler { … }
-func bar(next http.Handler) http.Handler { … }
+func foo(next http.Handler) http.Handler { ... }
+func bar(next http.Handler) http.Handler { ... }
 
 func main() {
     srv.Use(foo)
     srv.Use(bar)
-    srv.GET("/", func(w http.ResponseWriter, r *http.Request) { … })
+    srv.GET("/", func(w http.ResponseWriter, r *http.Request) { ... })
     srv.ListenAndServe(":3000")
 }
 ```
@@ -143,7 +165,7 @@ A regular `http.Handler` uses the following template:
 ```golang
 func foobar(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        […]
+        [...]
         next.ServeHTTP(w, r)
     })
 }
