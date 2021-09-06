@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -73,11 +74,28 @@ type Logger interface {
 //
 // Each line in a file stored in Common Log Format has the following syntax:
 //
-//   host ident authuser date request status bytes
+//	host ident authuser date request status bytes
+//
+// Example:
+//
+//	127.0.0.1 - cixtor [10/Dec/2019:13:55:36 -0700] "GET /server-status HTTP/1.1" 200 2326
 //
 // The format is extended by the Combined Log Format with the HTTP referrer and
 // user-agent fields. The Logger interface gives you the flexibility to follow
 // any standard or to design your own.
+//
+// Example:
+//
+//	127.0.0.1 - cixtor [10/Dec/2019:13:55:36 -0700] "GET /server-status HTTP/1.1" 200 2326 "http://localhost/" "Mozilla/5.0 (KHTML, like Gecko) Version/78.0.3904.108"
+//
+// The "hyphen" in the output indicates that the requested piece of information
+// is not available. In the example, the hyphen is the RFC 1413 identity of the
+// client determined by "identd" on the client's machine. This information is
+// highly unreliable and should almost never be used except on tightly controlled
+// internal networks. Other web servers, like Apache httpd, will not even attempt
+// to determine this information unless IdentityCheck is set to "On".
+//
+// Source: https://en.wikipedia.org/wiki/Common_Log_Format
 type AccessLog struct {
 	StartTime     time.Time
 	Host          string
@@ -92,6 +110,36 @@ type AccessLog struct {
 	BytesSent     int
 	Header        http.Header
 	Duration      time.Duration
+}
+
+// Request concatenates the request method, path, parameters and protocol.
+func (a AccessLog) Request() string {
+	return fmt.Sprintf("%q", a.Method+"\x20"+a.FullURL()+"\x20"+a.Protocol)
+}
+
+// FullURL concatenates the request path and its query parameters.
+func (a AccessLog) FullURL() string {
+	fullURL := a.Path
+
+	if params := a.Query.Encode(); params != "" {
+		fullURL += "?" + params
+	}
+
+	return fullURL
+}
+
+// String returns the request metadata in Combined Log format.
+func (a AccessLog) String() string {
+	return fmt.Sprintf(
+		"%s %s %s %d %d %q %v",
+		a.Host,
+		a.RemoteAddr,
+		a.Request(),
+		a.StatusCode,
+		a.BytesSent,
+		a.Header.Get("User-Agent"),
+		a.Duration,
+	)
 }
 
 // emptyLogger implements the Logger interface to discard access logs.
@@ -135,22 +183,5 @@ func (l BasicLogger) Shutdown(err error) {
 
 // Log implements the Log method for the Logger interface.
 func (l BasicLogger) Log(data AccessLog) {
-	fullURL := data.Path
-
-	if params := data.Query.Encode(); params != "" {
-		fullURL += "?" + params
-	}
-
-	l.logger.Printf(
-		"%s %s \"%s %s %s\" %d %d \"%s\" %v",
-		data.Host,
-		data.RemoteAddr,
-		data.Method,
-		fullURL,
-		data.Protocol,
-		data.StatusCode,
-		data.BytesSent,
-		data.Header.Get("User-Agent"),
-		data.Duration,
-	)
+	l.logger.Println(data)
 }
