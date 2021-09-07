@@ -7,9 +7,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/cixtor/middleware"
 )
@@ -842,5 +844,34 @@ func TestShutdownAddon(t *testing.T) {
 
 	if !done {
 		t.Fatal("middleware.OnShutdown function did not run")
+	}
+}
+
+var sampleAccessLog = middleware.AccessLog{
+	StartTime:     time.Date(2019, time.December, 10, 13, 55, 36, 0, time.UTC),
+	Host:          "localhost",
+	RemoteAddr:    "127.0.0.1",
+	RemoteUser:    "Identity",
+	Method:        "POST",
+	Path:          "/server-status",
+	Query:         url.Values{},
+	Protocol:      "HTTP/1.0",
+	StatusCode:    200,
+	BytesReceived: 0,
+	BytesSent:     2326,
+	Header: http.Header{
+		"Referer":    {"http://www.example.com/"},
+		"User-Agent": {"Mozilla/5.0 (KHTML, like Gecko) Version/78.0.3904.108"},
+	},
+	Duration: time.Millisecond * 5420,
+}
+
+func TestLoggerString(t *testing.T) {
+	expected := `localhost 127.0.0.1 "POST /server-status HTTP/1.0" 200 2326 "Mozilla/5.0 (KHTML, like Gecko) Version/78.0.3904.108" 5.42s`
+
+	str := fmt.Sprintf("%s", sampleAccessLog)
+
+	if str != expected {
+		t.Fatalf("incorrect access log format:\n- %s\n+ %s", expected, str)
 	}
 }
