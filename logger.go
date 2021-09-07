@@ -142,6 +142,18 @@ func (a AccessLog) String() string {
 	)
 }
 
+// CommonLog returns the request metadata in Common Log format.
+func (a AccessLog) CommonLog() string {
+	return fmt.Sprintf(
+		"%s - - [%s] %s %d %d",
+		a.RemoteAddr,
+		a.StartTime.Format(`02/01/2006:15:04:05 -07:00`),
+		a.Request(),
+		a.StatusCode,
+		a.BytesSent,
+	)
+}
+
 // emptyLogger implements the Logger interface to discard access logs.
 type emptyLogger struct{}
 
