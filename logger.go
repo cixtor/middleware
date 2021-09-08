@@ -154,6 +154,16 @@ func (a AccessLog) CommonLog() string {
 	)
 }
 
+// CombinedLog returns the request metadata in Combined Log format.
+func (a AccessLog) CombinedLog() string {
+	return fmt.Sprintf(
+		"%s %q %q",
+		a.CommonLog(),
+		a.Header.Get("Referer"),
+		a.Header.Get("User-Agent"),
+	)
+}
+
 // emptyLogger implements the Logger interface to discard access logs.
 type emptyLogger struct{}
 
