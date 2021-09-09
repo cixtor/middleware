@@ -128,6 +128,28 @@ func (a AccessLog) FullURL() string {
 	return fullURL
 }
 
+// Referer returns the request HTTP referer or a hyphen.
+func (a AccessLog) Referer() string {
+	referer := a.Header.Get("Referer")
+
+	if referer == "" {
+		referer = "-"
+	}
+
+	return referer
+}
+
+// UserAgent returns the request HTTP user-agent or a hyphen.
+func (a AccessLog) UserAgent() string {
+	userAgent := a.Header.Get("User-Agent")
+
+	if userAgent == "" {
+		userAgent = "-"
+	}
+
+	return userAgent
+}
+
 // String returns the request metadata in Combined Log format.
 func (a AccessLog) String() string {
 	return fmt.Sprintf(
@@ -159,8 +181,8 @@ func (a AccessLog) CombinedLog() string {
 	return fmt.Sprintf(
 		"%s %q %q",
 		a.CommonLog(),
-		a.Header.Get("Referer"),
-		a.Header.Get("User-Agent"),
+		a.Referer(),
+		a.UserAgent(),
 	)
 }
 
