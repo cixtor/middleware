@@ -885,3 +885,13 @@ func TestLoggerCommonLog(t *testing.T) {
 		t.Fatalf("incorrect common log format:\n- %s\n+ %s", expected, str)
 	}
 }
+
+func TestLoggerCombinedLog(t *testing.T) {
+	expected := `127.0.0.1 - - [10/12/2019:13:55:36 +00:00] "POST /server-status HTTP/1.0" 200 2326 "http://www.example.com/" "Mozilla/5.0 (KHTML, like Gecko) Version/78.0.3904.108"`
+
+	str := sampleAccessLog.CombinedLog()
+
+	if str != expected {
+		t.Fatalf("incorrect combined log format:\n- %s\n+ %s", expected, str)
+	}
+}
