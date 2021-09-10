@@ -895,3 +895,17 @@ func TestLoggerCombinedLog(t *testing.T) {
 		t.Fatalf("incorrect combined log format:\n- %s\n+ %s", expected, str)
 	}
 }
+
+func TestLoggerCombinedLogWithHyphens(t *testing.T) {
+	localAccessLog := sampleAccessLog
+	localAccessLog.Header.Set("Referer", "")
+	localAccessLog.Header.Set("User-Agent", "")
+
+	expected := `127.0.0.1 - - [10/12/2019:13:55:36 +00:00] "POST /server-status HTTP/1.0" 200 2326 "-" "-"`
+
+	str := sampleAccessLog.CombinedLog()
+
+	if str != expected {
+		t.Fatalf("incorrect combined log format:\n- %s\n+ %s", expected, str)
+	}
+}
