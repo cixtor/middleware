@@ -909,3 +909,34 @@ func TestLoggerCombinedLogWithHyphens(t *testing.T) {
 		t.Fatalf("incorrect combined log format:\n- %s\n+ %s", expected, str)
 	}
 }
+
+type LoggerAndNewLines struct {
+	metadata middleware.AccessLog
+}
+
+func (l LoggerAndNewLines) ListeningOn(addr string) {}
+
+func (l LoggerAndNewLines) Shutdown(err error) {}
+
+func (l *LoggerAndNewLines) Log(data middleware.AccessLog) {
+	l.metadata = data
+}
+
+func TestLoggerAndNewLines(t *testing.T) {
+	logger := &LoggerAndNewLines{}
+
+	go func() {
+		router := middleware.New()
+		router.Logger = logger
+		defer router.Shutdown()
+		router.ListenAndServe(":60321")
+	}()
+
+	curl(t, "GET", "localhost", "http://localhost:60321/foo%0abar", []byte("Method Not Allowed\n"))
+
+	expected := `"GET /foo\nbar HTTP/1.1"`
+
+	if str := logger.metadata.Request(); str != expected {
+		t.Fatalf("incorrect request section in access log:\n- %s\n+ %s", expected, str)
+	}
+}
