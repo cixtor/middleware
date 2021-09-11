@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"os"
+	"path"
 	"strings"
 )
 
@@ -20,8 +21,8 @@ type Router struct {
 // another property to force the ServeHTTP method to return immediately for
 // every match in the URL no matter if the named parameters do not match.
 type route struct {
-	// path is the raw URL: `/lorem/:ipsum/dolor`
-	path string
+	// endpoint is the raw URL: `/lorem/:ipsum/dolor`
+	endpoint string
 	// parts is a list of sections representing the URL.
 	parts []rpart
 	// glob is true if the route has a global catcher.
@@ -34,12 +35,12 @@ type route struct {
 //
 // Example:
 //
-//   /lorem/:ipsum/dolor -> []section{
-//     section{name:"<root>", dyna: false, root: true},
-//     section{name:"lorem",  dyna: false, root: false},
-//     section{name:":ipsum", dyna: true,  root: false},
-//     section{name:"dolor",  dyna: false, root: false},
-//   }
+//	/lorem/:ipsum/dolor -> []section{
+//	  section{name: "<root>", dyna: false, root: true},
+//	  section{name: "lorem",  dyna: false, root: false},
+//	  section{name: ":ipsum", dyna: true,  root: false},
+//	  section{name: "dolor",  dyna: false, root: false},
+//	}
 type rpart struct {
 	// name is the raw text in the URL.
 	name string
@@ -61,17 +62,14 @@ func newRouter() *Router {
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
-func (r *Router) register(method, path string, fn http.Handler) {
-	node := route{path: path, dispatcher: fn}
-	parts := strings.Split(path, "/")
+func (r *Router) register(method, endpoint string, fn http.Handler) {
+	endpoint = path.Clean(endpoint)
+	node := route{endpoint: endpoint, dispatcher: fn}
+	parts := strings.Split(endpoint, "/")
 
 	for idx, section := range parts {
 		if section == "" && idx == 0 {
 			node.parts = append(node.parts, rpart{root: true})
-			continue
-		}
-
-		if section == "" && idx > 0 {
 			continue
 		}
 
@@ -92,8 +90,8 @@ func (r *Router) register(method, path string, fn http.Handler) {
 }
 
 // Handle registers the handler for the given pattern.
-func (r *Router) Handle(method string, path string, fn http.HandlerFunc) {
-	r.register(method, path, fn)
+func (r *Router) Handle(method string, endpoint string, fn http.HandlerFunc) {
+	r.register(method, endpoint, fn)
 }
 
 // GET requests a representation of the specified resource.
@@ -102,8 +100,8 @@ func (r *Router) Handle(method string, path string, fn http.HandlerFunc) {
 // such as using it for taking actions in web applications. One reason for this
 // is that GET may be used arbitrarily by robots or crawlers, which should not
 // need to consider the side effects that a request should cause.
-func (r *Router) GET(path string, fn http.HandlerFunc) {
-	r.register(http.MethodGet, path, fn)
+func (r *Router) GET(endpoint string, fn http.HandlerFunc) {
+	r.register(http.MethodGet, endpoint, fn)
 }
 
 // POST submits data to be processed to the identified resource.
@@ -116,78 +114,78 @@ func (r *Router) GET(path string, fn http.HandlerFunc) {
 // data to be encoded in the Request-URI. Many existing servers, proxies, and
 // user agents will log the request URI in some place where it might be visible
 // to third parties. Servers can use POST-based form submission instead.
-func (r *Router) POST(path string, fn http.HandlerFunc) {
-	r.register(http.MethodPost, path, fn)
+func (r *Router) POST(endpoint string, fn http.HandlerFunc) {
+	r.register(http.MethodPost, endpoint, fn)
 }
 
-// PUT is a shortcut for middleware.handle("PUT", path, handle).
-func (r *Router) PUT(path string, fn http.HandlerFunc) {
-	r.register(http.MethodPut, path, fn)
+// PUT is a shortcut for middleware.handle("PUT", endpoint, handle).
+func (r *Router) PUT(endpoint string, fn http.HandlerFunc) {
+	r.register(http.MethodPut, endpoint, fn)
 }
 
-// PATCH is a shortcut for middleware.handle("PATCH", path, handle).
-func (r *Router) PATCH(path string, fn http.HandlerFunc) {
-	r.register(http.MethodPatch, path, fn)
+// PATCH is a shortcut for middleware.handle("PATCH", endpoint, handle).
+func (r *Router) PATCH(endpoint string, fn http.HandlerFunc) {
+	r.register(http.MethodPatch, endpoint, fn)
 }
 
-// DELETE is a shortcut for middleware.handle("DELETE", path, handle).
-func (r *Router) DELETE(path string, fn http.HandlerFunc) {
-	r.register(http.MethodDelete, path, fn)
+// DELETE is a shortcut for middleware.handle("DELETE", endpoint, handle).
+func (r *Router) DELETE(endpoint string, fn http.HandlerFunc) {
+	r.register(http.MethodDelete, endpoint, fn)
 }
 
-// HEAD is a shortcut for middleware.handle("HEAD", path, handle).
-func (r *Router) HEAD(path string, fn http.HandlerFunc) {
-	r.register(http.MethodHead, path, fn)
+// HEAD is a shortcut for middleware.handle("HEAD", endpoint, handle).
+func (r *Router) HEAD(endpoint string, fn http.HandlerFunc) {
+	r.register(http.MethodHead, endpoint, fn)
 }
 
-// OPTIONS is a shortcut for middleware.handle("OPTIONS", path, handle).
-func (r *Router) OPTIONS(path string, fn http.HandlerFunc) {
-	r.register(http.MethodOptions, path, fn)
+// OPTIONS is a shortcut for middleware.handle("OPTIONS", endpoint, handle).
+func (r *Router) OPTIONS(endpoint string, fn http.HandlerFunc) {
+	r.register(http.MethodOptions, endpoint, fn)
 }
 
-// CONNECT is a shortcut for middleware.handle("CONNECT", path, handle).
-func (r *Router) CONNECT(path string, fn http.HandlerFunc) {
-	r.register(http.MethodConnect, path, fn)
+// CONNECT is a shortcut for middleware.handle("CONNECT", endpoint, handle).
+func (r *Router) CONNECT(endpoint string, fn http.HandlerFunc) {
+	r.register(http.MethodConnect, endpoint, fn)
 }
 
-// TRACE is a shortcut for middleware.handle("TRACE", path, handle).
-func (r *Router) TRACE(path string, fn http.HandlerFunc) {
-	r.register(http.MethodTrace, path, fn)
+// TRACE is a shortcut for middleware.handle("TRACE", endpoint, handle).
+func (r *Router) TRACE(endpoint string, fn http.HandlerFunc) {
+	r.register(http.MethodTrace, endpoint, fn)
 }
 
-// COPY is a shortcut for middleware.handle("WebDAV.COPY", path, handle).
-func (r *Router) COPY(path string, fn http.HandlerFunc) {
-	r.register("COPY", path, fn)
+// COPY is a shortcut for middleware.handle("WebDAV.COPY", endpoint, handle).
+func (r *Router) COPY(endpoint string, fn http.HandlerFunc) {
+	r.register("COPY", endpoint, fn)
 }
 
-// LOCK is a shortcut for middleware.handle("WebDAV.LOCK", path, handle).
-func (r *Router) LOCK(path string, fn http.HandlerFunc) {
-	r.register("LOCK", path, fn)
+// LOCK is a shortcut for middleware.handle("WebDAV.LOCK", endpoint, handle).
+func (r *Router) LOCK(endpoint string, fn http.HandlerFunc) {
+	r.register("LOCK", endpoint, fn)
 }
 
-// MKCOL is a shortcut for middleware.handle("WebDAV.MKCOL", path, handle).
-func (r *Router) MKCOL(path string, fn http.HandlerFunc) {
-	r.register("MKCOL", path, fn)
+// MKCOL is a shortcut for middleware.handle("WebDAV.MKCOL", endpoint, handle).
+func (r *Router) MKCOL(endpoint string, fn http.HandlerFunc) {
+	r.register("MKCOL", endpoint, fn)
 }
 
-// MOVE is a shortcut for middleware.handle("WebDAV.MOVE", path, handle).
-func (r *Router) MOVE(path string, fn http.HandlerFunc) {
-	r.register("MOVE", path, fn)
+// MOVE is a shortcut for middleware.handle("WebDAV.MOVE", endpoint, handle).
+func (r *Router) MOVE(endpoint string, fn http.HandlerFunc) {
+	r.register("MOVE", endpoint, fn)
 }
 
-// PROPFIND is a shortcut for middleware.handle("WebDAV.PROPFIND", path, handle).
-func (r *Router) PROPFIND(path string, fn http.HandlerFunc) {
-	r.register("PROPFIND", path, fn)
+// PROPFIND is a shortcut for middleware.handle("WebDAV.PROPFIND", endpoint, handle).
+func (r *Router) PROPFIND(endpoint string, fn http.HandlerFunc) {
+	r.register("PROPFIND", endpoint, fn)
 }
 
-// PROPPATCH is a shortcut for middleware.handle("WebDAV.PROPPATCH", path, handle).
-func (r *Router) PROPPATCH(path string, fn http.HandlerFunc) {
-	r.register("PROPPATCH", path, fn)
+// PROPPATCH is a shortcut for middleware.handle("WebDAV.PROPPATCH", endpoint, handle).
+func (r *Router) PROPPATCH(endpoint string, fn http.HandlerFunc) {
+	r.register("PROPPATCH", endpoint, fn)
 }
 
-// UNLOCK is a shortcut for middleware.handle("WebDAV.UNLOCK", path, handle).
-func (r *Router) UNLOCK(path string, fn http.HandlerFunc) {
-	r.register("UNLOCK", path, fn)
+// UNLOCK is a shortcut for middleware.handle("WebDAV.UNLOCK", endpoint, handle).
+func (r *Router) UNLOCK(endpoint string, fn http.HandlerFunc) {
+	r.register("UNLOCK", endpoint, fn)
 }
 
 // STATIC refers to the static assets folder, a place where people can store
@@ -198,7 +196,7 @@ func (r *Router) UNLOCK(path string, fn http.HandlerFunc) {
 // handlers.
 func (r *Router) STATIC(folder string, urlPrefix string) {
 	node := route{
-		path:       urlPrefix,
+		endpoint:   urlPrefix,
 		glob:       true,
 		dispatcher: r.serveFiles(folder, urlPrefix),
 	}

@@ -360,12 +360,12 @@ func (m *Middleware) notFoundHandler() http.Handler {
 func (m *Middleware) findHandler(r *http.Request, children []route) (route, []httpParam, error) {
 	for _, child := range children {
 		// side-by-side match; no params.
-		if r.URL.Path == child.path {
+		if r.URL.Path == child.endpoint {
 			return child, []httpParam{}, nil
 		}
 
 		// global match; match everything with the same prefix.
-		if child.glob && strings.HasPrefix(r.URL.Path, child.path) {
+		if child.glob && strings.HasPrefix(r.URL.Path, child.endpoint) {
 			return child, []httpParam{}, nil
 		}
 
