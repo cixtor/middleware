@@ -446,6 +446,20 @@ func TestMultipleRoutes(t *testing.T) {
 	curl(t, "GET", "localhost", "http://localhost:60315/lorem/ipsum/", []byte("Lorem Ipsum"))
 }
 
+func TestRouteWithExtraSlash(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.GET("/hello///////world", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "hello")
+		})
+		_ = router.ListenAndServe(":60323")
+	}()
+
+	curl(t, "GET", "localhost", "http://localhost:60323/hello/world", []byte("hello"))
+}
+
 func TestMultipleDynamic(t *testing.T) {
 	go func() {
 		router := middleware.New()
