@@ -446,6 +446,20 @@ func TestMultipleRoutes(t *testing.T) {
 	curl(t, "GET", "localhost", "http://localhost:60315/lorem/ipsum/", []byte("Lorem Ipsum"))
 }
 
+func TestRouteWithAsterisk(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.GET("/home/users/*/ignored/sections", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "robot")
+		})
+		_ = router.ListenAndServe(":60322")
+	}()
+
+	curl(t, "GET", "localhost", "http://localhost:60322/home/users/a/b/root", []byte("robot"))
+}
+
 func TestRouteWithExtraSlash(t *testing.T) {
 	go func() {
 		router := middleware.New()
