@@ -358,6 +358,8 @@ func (m *Middleware) notFoundHandler() http.Handler {
 
 // findHandler returns a request handler that corresponds to the request URL.
 func (m *Middleware) findHandler(r *http.Request, children []route) (route, []httpParam, error) {
+	steps := strings.Split(path.Clean(r.URL.Path), "/")
+
 	for _, child := range children {
 		// side-by-side match; no params.
 		if r.URL.Path == child.endpoint {
@@ -369,7 +371,7 @@ func (m *Middleware) findHandler(r *http.Request, children []route) (route, []ht
 			return child, []httpParam{}, nil
 		}
 
-		if params, err := m.findHandlerParams(r, child); err == nil {
+		if params, err := m.findHandlerParams(r, child, steps); err == nil {
 			return child, params, nil
 		}
 	}
@@ -378,14 +380,12 @@ func (m *Middleware) findHandler(r *http.Request, children []route) (route, []ht
 }
 
 // findHandlerParams returns the URL parameters associated to the request path.
-func (m *Middleware) findHandlerParams(r *http.Request, child route) ([]httpParam, error) {
-	var params []httpParam
-
-	steps := strings.Split(path.Clean(r.URL.Path), "/")
-
+func (m *Middleware) findHandlerParams(r *http.Request, child route, steps []string) ([]httpParam, error) {
 	if len(steps) != len(child.parts) {
 		return nil, errNoMatch
 	}
+
+	var params []httpParam
 
 	for idx, part := range child.parts {
 		if part.root {

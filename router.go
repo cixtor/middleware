@@ -63,27 +63,43 @@ func newRouter() *Router {
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
 func (r *Router) register(method, endpoint string, fn http.Handler) {
+	folders := []string{}
 	endpoint = path.Clean(endpoint)
-	node := route{endpoint: endpoint, dispatcher: fn}
-	parts := strings.Split(endpoint, "/")
+	node := route{dispatcher: fn}
+	sections := strings.Split(endpoint, "/")
 
-	for idx, section := range parts {
-		if section == "" && idx == 0 {
-			node.parts = append(node.parts, rpart{root: true})
+	for idx, section := range sections {
+		part := rpart{name: section}
+
+		if idx == 0 {
+			// First part of the URL, before the first slash, is supposed to be
+			// always empty, so we do not need to worry about what is written
+			// there. Even if this text is not empty, we can safely ignore it.
+			part.root = true
+		} else if section == "" {
+			// Since we are calling path.Clean on the endpoint, this condition
+			// is redundant. However, we cannot guarantee that the algorithm
+			// is always going to do what it is supposed to do, so this portion
+			// adds an extra layer of peace of mind.
 			continue
-		}
-
-		if section == "*" {
+		} else if section == "*" {
+			// Asterisk means that the router needs to match everything after
+			// this portion of the URL. We can safely mark this portion of the
+			// URL as a Glob and then ignore the rest of the sections.
 			node.glob = true
-			continue
+			break
+		} else if section[0] == ':' {
+			part.dyna = true
 		}
 
-		if section[0] == ':' {
-			node.parts = append(node.parts, rpart{name: section, dyna: true})
-			continue
-		}
+		folders = append(folders, section)
+		node.parts = append(node.parts, part)
+	}
 
-		node.parts = append(node.parts, rpart{name: section})
+	node.endpoint = strings.Join(folders, "/")
+
+	if node.endpoint == "" {
+		node.endpoint = "/"
 	}
 
 	r.nodes[method] = append(r.nodes[method], node)
