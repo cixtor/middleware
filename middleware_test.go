@@ -507,25 +507,6 @@ func TestMultipleDynamic(t *testing.T) {
 	curl(t, "GET", "localhost", "http://localhost:60332/hello/john/smith/info", []byte("Hello john smith"))
 }
 
-func TestMultipleDynamicACDC(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/bands/:artist/:song", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(
-				w,
-				"Band is %s w/ %s",
-				middleware.Param(r, "artist"),
-				middleware.Param(r, "song"),
-			)
-		})
-		_ = router.ListenAndServe(":60352")
-	}()
-
-	curl(t, "GET", "localhost", "http://localhost:60352/bands/AC%2fDC/T.N.T", []byte("Band is AC/DC w/ T.N.T"))
-}
-
 func TestMultipleHosts(t *testing.T) {
 	go func() {
 		router := middleware.New()
