@@ -182,6 +182,13 @@ func (m *Middleware) ListenAndServeTLS(addr string, certFile string, keyFile str
 // closing the Server's underlying Listener(s).
 func (m *Middleware) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), m.ShutdownTimeout)
+
 	defer cancel()
+
+	if m.serverInstance == nil {
+		// Nothing to stop.
+		return nil
+	}
+
 	return m.serverInstance.Shutdown(ctx)
 }
