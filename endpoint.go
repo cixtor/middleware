@@ -33,3 +33,25 @@ func (e endpoint) String() string {
 	}
 	return path.Clean(strings.Join(arr, sep))
 }
+
+// parseEndpoint decomposes a URL path into basic components.
+func parseEndpoint(str string, fn http.Handler) endpoint {
+	end := endpoint{
+		Handler: fn,
+		Folders: []folder{},
+	}
+
+	arr := strings.Split(path.Clean(str), sep)
+
+	for _, segment := range arr {
+		end.Folders = append(end.Folders, folder(segment))
+		end.Levels++
+
+		if segment == "*" {
+			end.HasGlob = true
+			break
+		}
+	}
+
+	return end
+}
