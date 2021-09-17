@@ -55,3 +55,68 @@ func parseEndpoint(str string, fn http.Handler) endpoint {
 
 	return end
 }
+
+// Match returns True if the endpoint can handle the specified request.
+//
+// If the endpoint was defined with one or more dynamic parameters, then the
+// function will also return a list with all the parameters matched to their
+// corresponding values based on the same request.
+func (e endpoint) Match(arr []string) ([]httpParam, bool) {
+	reqN := len(arr)
+	endN := len(e.Folders)
+
+	if endN > reqN {
+		// Endpoint expects more folders than the ones available in the URL.
+		//
+		// - req: /usr/local/etc/openssl
+		// - end: /usr/local/:group/:package/cert.pem
+		return nil, false
+	}
+
+	if endN < reqN && !e.Folders[endN-1].IsGlob() {
+		// Endpoint has less folders than the ones in the requested URL, and
+		// the last folder in the list is not marked with an asterisk, so we
+		// cannot use the global match algorithm.
+		return nil, false
+	}
+
+	params := []httpParam{}
+	matches := make([]bool, endN)
+
+	for i, section := range e.Folders {
+		if !section.IsParam() && !section.IsGlob() && string(section) == arr[i] {
+			// Exact same text in this part of the URL.
+			//
+			//         vvv
+			// - req: /usr/local/etc/openssl
+			// - end: /usr/local/:group/:package/cert.pem
+			//             ^^^^^
+			matches[i] = true
+			continue
+		}
+
+		if section.IsParam() {
+			params = append(params, httpParam{
+				Name:  section.Name(),
+				Value: arr[i],
+			})
+			matches[i] = true
+		}
+
+		if i > 0 && section.IsGlob() {
+			// Once we find the first global match mark, we can safely ignore
+			// the other segments in the request URL and stop the iterator.
+			matches[i] = true
+			break
+		}
+	}
+
+	// TODO: optimize; long URLs create big arrays.
+	for i := 0; i < endN; i++ {
+		if !matches[i] {
+			return nil, false
+		}
+	}
+
+	return params, true
+}
