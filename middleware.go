@@ -113,7 +113,7 @@ type Middleware struct {
 
 	chain func(http.Handler) http.Handler
 
-	hosts map[string]*Router
+	hosts map[string]*router
 
 	serverInstance *http.Server
 
@@ -170,7 +170,7 @@ func New() *Middleware {
 	m := new(Middleware)
 
 	m.Logger = NewBasicLogger() /* basic access log */
-	m.hosts = map[string]*Router{nohost: newRouter()}
+	m.hosts = map[string]*router{nohost: newRouter()}
 	m.OnShutdown = func() { /* shutting down... */ }
 
 	// Default timeout values.
@@ -202,9 +202,9 @@ func compose(f, g func(http.Handler) http.Handler) func(http.Handler) http.Handl
 // session management system, and a file system cache policy, you can attach
 // them to the main router like this:
 //
-//   router.Use(headersMiddleware)
-//   router.Use(sessionMiddleware)
-//   router.Use(filesysMiddleware)
+//	srv.Use(headersMiddleware)
+//	srv.Use(sessionMiddleware)
+//	srv.Use(filesysMiddleware)
 //
 // They will run as follows:
 //
@@ -237,21 +237,21 @@ func (m *Middleware) Use(f func(http.Handler) http.Handler) {
 // matches the request URL. Additional to the standard functionality this also
 // logs every direct HTTP request into the standard output.
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	router := m.hosts[nohost]
+	myRouter := m.hosts[nohost]
 
 	// Use the host specific router, if available.
 	if hostRouter, ok := m.hosts[r.Host]; ok && hostRouter != nil {
-		router = hostRouter
+		myRouter = hostRouter
 	}
 
-	if router == nil {
+	if myRouter == nil {
 		http.Error(w, "Unexpected host "+r.Host, http.StatusInternalServerError)
 		return
 	}
 
 	start := time.Now()
 	writer := response{w, 0, 0}
-	m.handleRequest(router, &writer, r)
+	m.handleRequest(myRouter, &writer, r)
 	dur := time.Since(start)
 
 	m.Logger.Log(AccessLog{
@@ -303,7 +303,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // the defined URL. This is because trailing slashes are ignored, so even the
 // first attempt (which is similar to what the HTTP handler is expecting) will
 // fail as there is not enough data to set the value for the "group" parameter.
-func (m *Middleware) handleRequest(router *Router, w http.ResponseWriter, r *http.Request) {
+func (m *Middleware) handleRequest(router *router, w http.ResponseWriter, r *http.Request) {
 	children, ok := router.nodes[r.Method]
 
 	if !ok {
@@ -413,7 +413,7 @@ func (m *Middleware) findHandlerParams(r *http.Request, child route, steps []str
 // a pointer to the associated router, which users can use to register an HTTP
 // handler of type GET, POST, PUT, PATCH, DELETE, HEAD or OPTIONS to handle
 // requests when req.Host == tld.
-func (m *Middleware) Host(tld string) *Router {
+func (m *Middleware) Host(tld string) *router {
 	if _, ok := m.hosts[tld]; !ok {
 		m.hosts[tld] = newRouter()
 	}
