@@ -182,15 +182,11 @@ func (r *router) UNLOCK(endpoint string, fn http.HandlerFunc) {
 // put one in the middle of your requests as easy as you attach normal HTTP
 // handlers.
 func (r *router) STATIC(folder string, urlPrefix string) {
-	node := route{
-		endpoint:   urlPrefix,
-		glob:       true,
-		dispatcher: r.serveFiles(folder, urlPrefix),
-	}
+	fn := r.serveFiles(folder, urlPrefix)
 
-	r.nodes[http.MethodHead] = append(r.nodes[http.MethodHead], node)
-	r.nodes[http.MethodGet] = append(r.nodes[http.MethodGet], node)
-	r.nodes[http.MethodPost] = append(r.nodes[http.MethodPost], node)
+	r.HEAD(urlPrefix+"/*", fn)
+	r.GET(urlPrefix+"/*", fn)
+	r.POST(urlPrefix+"/*", fn)
 }
 
 // serveFiles serves files from the root of the given file system.
