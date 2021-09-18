@@ -3,8 +3,6 @@ package middleware
 import (
 	"net/http"
 	"os"
-	"path"
-	"strings"
 )
 
 // router is an HTTP routing machine. The default host automatically creates a
@@ -34,46 +32,7 @@ func newRouter() *router {
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
 func (r *router) register(method string, endpoint string, fn http.Handler) {
-	folders := []string{}
-	endpoint = path.Clean(endpoint)
-	node := route{dispatcher: fn}
-	sections := strings.Split(endpoint, "/")
-
-	for idx, section := range sections {
-		part := rpart{name: section}
-
-		if idx == 0 {
-			// First part of the URL, before the first slash, is supposed to be
-			// always empty, so we do not need to worry about what is written
-			// there. Even if this text is not empty, we can safely ignore it.
-			part.root = true
-		} else if section == "" {
-			// Since we are calling path.Clean on the endpoint, this condition
-			// is redundant. However, we cannot guarantee that the algorithm
-			// is always going to do what it is supposed to do, so this portion
-			// adds an extra layer of peace of mind.
-			continue
-		} else if section == "*" {
-			// Asterisk means that the router needs to match everything after
-			// this portion of the URL. We can safely mark this portion of the
-			// URL as a Glob and then ignore the rest of the sections.
-			node.glob = true
-			break
-		} else if section[0] == ':' {
-			part.dyna = true
-		}
-
-		folders = append(folders, section)
-		node.parts = append(node.parts, part)
-	}
-
-	node.endpoint = strings.Join(folders, "/")
-
-	if node.endpoint == "" {
-		node.endpoint = "/"
-	}
-
-	r.nodes[method] = append(r.nodes[method], node)
+	r.nodes[method] = append(r.nodes[method], parseEndpoint(endpoint, fn))
 }
 
 // Handle registers the handler for the given pattern.
