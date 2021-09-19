@@ -149,23 +149,23 @@ var paramsKey = contextKey("MiddlewareParameter")
 //
 // Based on the following http.Request schema:
 //
-//	┌─────────────────────────────────────────http.Request─────────────────────────────────────────┐
-//	│ Accept                                                                                       │
-//	│ ┌──────┬───────────┬─────────────────────────────────┬──────────────────────┬──────────────┐ │
-//	│ │      │    TLS    │             Request             │       Response       │              │ │
-//	│ │ Wait │ Handshake ├──────────────────────┬──────────┼───────────┬──────────┤     Idle     │ │
-//	│ │      │           │       Headers        │   Body   │  Headers  │   Body   │              │ │
-//	│ └──────┴───────────┴──────────────────────┴──────────┴───────────┴──────────┴──────────────┘ │
-//	│                                           ├───────────ServerHTTP────────────┤                │
-//	│                                                                                IdleTimeout   │
-//	│                    ├───ReadHeaderTimeout──┤                                 ├─(keep-alive)─┤ │
-//	│                                                                                              │
-//	│ ├────────────────────ReadTimeout─────────────────────┤                                       │
-//	│                                                                                              │
-//	│ ├ ─ ─ ─ ─ ─WriteTimeout (TLS only)─ ─ ─ ─ ┼──────────WriteTimeout───────────┤                │
-//	│                                                                                              │
-//	│                                           ├──────http.TimeoutHandler────────┤                │
-//	└──────────────────────────────────────────────────────────────────────────────────────────────┘
+//	┌──────────────────────────────────http.Request───────────────────────────────────┐
+//	│ Accept                                                                          │
+//	│ ┌──────┬───────────┬──────────────────────────┬──────────────────┬────────────┐ │
+//	│ │      │    TLS    │         Request          │     Response     │            │ │
+//	│ │ Wait │ Handshake ├───────────────────┬──────┼───────────┬──────┤    Idle    │ │
+//	│ │      │           │      Headers      │ Body │  Headers  │ Body │            │ │
+//	│ └──────┴───────────┴───────────────────┴──────┴───────────┴──────┴────────────┘ │
+//	│                                        ├───────ServerHTTP────────┤              │
+//	│                                                                    IdleTimeout  │
+//	│                    ├─ReadHeaderTimeout─┤                         ├(keep-alive)┤ │
+//	│                                                                                 │
+//	│ ├──────────────────ReadTimeout────────────────┤                                 │
+//	│                                                                                 │
+//	│ ├ ─ ─ ─ ─WriteTimeout (TLS only) ─ ─ ─ ┼──────WriteTimeout──────┤               │
+//	│                                                                                 │
+//	│                                        ├───http.TimeoutHandler──┤               │
+//	└─────────────────────────────────────────────────────────────────────────────────┘
 func New() *Middleware {
 	m := new(Middleware)
 
@@ -208,22 +208,22 @@ func compose(f, g func(http.Handler) http.Handler) func(http.Handler) http.Handl
 //
 // They will run as follows:
 //
-//   headersMiddleware(
-//     sessionMiddleware(
-//       filesysMiddleware(
-//         func(http.ResponseWriter, *http.Request)
-//       )
-//     )
-//   )
+//	headersMiddleware(
+//	  sessionMiddleware(
+//	    filesysMiddleware(
+//	      func(http.ResponseWriter, *http.Request)
+//	    )
+//	  )
+//	)
 //
 // Use the following template to create more middlewares:
 //
-//   func foobar(next http.Handler) http.Handler {
-//       return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//           […]
-//           next.ServeHTTP(w, r)
-//       })
-//   }
+//	func foobar(next http.Handler) http.Handler {
+//	    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//	        […]
+//	        next.ServeHTTP(w, r)
+//	    })
+//	}
 func (m *Middleware) Use(f func(http.Handler) http.Handler) {
 	if m.chain == nil {
 		m.chain = f
@@ -285,8 +285,8 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 //
 // Here is an example of a successful request:
 //
-//   Defined URL: /foo/bar/:group
-//   Request URL: /foo/bar/example
+//	Defined URL: /foo/bar/:group
+//	Request URL: /foo/bar/example
 //
 // This request returns a "200 OK" and the HTTP handler can then obtain a copy
 // of the value for the "group" parameter using `middleware.Param()`. Or simply
@@ -294,12 +294,12 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 //
 // Here is an example of an invalid request:
 //
-//   Defined URL: /foo/bar/:group
-//   Request URL: /foo/bar/
-//   Request URL: /foo/bar
-//   Request URL: /foo/
-//   Request URL: /foo
-//   Request URL: /
+//	Defined URL: /foo/bar/:group
+//	Request URL: /foo/bar/
+//	Request URL: /foo/bar
+//	Request URL: /foo/
+//	Request URL: /foo
+//	Request URL: /
 //
 // All these requests will return "404 Not Found" because none of them matches
 // the defined URL. This is because trailing slashes are ignored, so even the
