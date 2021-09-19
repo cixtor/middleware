@@ -120,3 +120,36 @@ func (e endpoint) Match(arr []string) ([]httpParam, bool) {
 
 	return params, true
 }
+
+// byEndpoint is a wrapper around a list of endpoint for sorting purposes.
+type byEndpoint []endpoint
+
+// Len returns the number of endpoints in the list.
+func (v byEndpoint) Len() int {
+	return len(v)
+}
+
+// Swap interchanges two indexes in the list of endpoints.
+func (v byEndpoint) Swap(i, j int) {
+	v[i], v[j] = v[j], v[i]
+}
+
+// Less determines whether the endpoint at position "i" must be sorted before
+// endpoint at position "j" or not.
+//
+//   - If the endpoint has a global match mark, move to the bottom
+//   - If the endpoint does not have a global match mark, move to the top
+//   - If the number of folder levels is different, then move the longest up
+//   - If the number of folder levels is the same, sort in alphabetical order
+func (v byEndpoint) Less(i, j int) bool {
+	if v[i].HasGlob && !v[j].HasGlob {
+		return false
+	}
+	if !v[i].HasGlob && v[j].HasGlob {
+		return true
+	}
+	if v[i].Levels != v[j].Levels {
+		return v[i].Levels > v[j].Levels
+	}
+	return v[i].String() < v[j].String()
+}

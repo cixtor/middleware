@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"os"
+	"sort"
 )
 
 // router is an HTTP routing machine. The default host automatically creates a
@@ -24,6 +25,21 @@ func newRouter() *router {
 	return &router{
 		nodes: map[string][]endpoint{},
 	}
+}
+
+// Sort organizes the list of router nodes in such a way that endpoints that
+// contain at least one global match mark are evaluated last, and endpoints
+// with the most specific path are placed first. This way we avoid conflicts.
+func (r *router) Sort() {
+	if r.sorted {
+		return
+	}
+
+	for _, ends := range r.nodes {
+		sort.Sort(byEndpoint(ends))
+	}
+
+	r.sorted = true
 }
 
 // register registers a new request register with the given path and method.

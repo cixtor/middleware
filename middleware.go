@@ -249,6 +249,8 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	myRouter.Sort()
+
 	start := time.Now()
 	writer := response{w, 0, 0}
 	m.handleRequest(myRouter, &writer, r)
