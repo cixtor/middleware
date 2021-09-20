@@ -306,7 +306,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // first attempt (which is similar to what the HTTP handler is expecting) will
 // fail as there is not enough data to set the value for the "group" parameter.
 func (m *Middleware) handleRequest(router *router, w http.ResponseWriter, r *http.Request) {
-	children, ok := router.nodes[r.Method]
+	ends, ok := router.nodes[r.Method]
 
 	if !ok {
 		// HTTP method not allowed, return "405 Method Not Allowed".
@@ -320,16 +320,7 @@ func (m *Middleware) handleRequest(router *router, w http.ResponseWriter, r *htt
 		return
 	}
 
-	var handler http.Handler
-
-	child, params, err := m.findHandler(r, children)
-
-	// send "404 Not Found" if there is no handler.
-	if err != nil || child.dispatcher == nil {
-		handler = m.notFoundHandler()
-	} else {
-		handler = child.dispatcher
-	}
+	handler, params := m.findHandler(r, ends)
 
 	if len(params) > 0 {
 		// insert request parameters into the request context.
@@ -359,56 +350,31 @@ func (m *Middleware) notFoundHandler() http.Handler {
 }
 
 // findHandler returns a request handler that corresponds to the request URL.
-func (m *Middleware) findHandler(r *http.Request, children []route) (route, []httpParam, error) {
-	steps := strings.Split(path.Clean(r.URL.Path), "/")
+func (m *Middleware) findHandler(r *http.Request, ends []endpoint) (http.Handler, []httpParam) {
+	// TODO: optimize; this adds approximately 1100 ns/op.
+	reqPath := path.Clean(r.URL.Path)
 
-	for _, child := range children {
-		// side-by-side match; no params.
-		if r.URL.Path == child.endpoint {
-			return child, []httpParam{}, nil
-		}
+	// TODO: optimize; this adds approximately 2240 ns/op.
+	segments := strings.Split(reqPath, sep)
 
-		// global match; match everything with the same prefix.
-		if child.glob && strings.HasPrefix(r.URL.Path, child.endpoint) {
-			return child, []httpParam{}, nil
-		}
+	for _, end := range ends {
+		params, ok := end.Match(segments)
 
-		if params, err := m.findHandlerParams(r, child, steps); err == nil {
-			return child, params, nil
-		}
-	}
-
-	return route{}, []httpParam{}, errNoMatch
-}
-
-// findHandlerParams returns the URL parameters associated to the request path.
-func (m *Middleware) findHandlerParams(r *http.Request, child route, steps []string) ([]httpParam, error) {
-	if len(steps) != len(child.parts) {
-		return nil, errNoMatch
-	}
-
-	var params []httpParam
-
-	for idx, part := range child.parts {
-		if part.root {
+		if !ok {
 			continue
 		}
 
-		if part.dyna {
-			params = append(params, httpParam{
-				Name:  part.name[1:],
-				Value: steps[idx],
-			})
-			continue
+		if end.Handler == nil {
+			// We found a valid endpoint but it does not seem to have a valid
+			// HTTP handler. We will assume the endpoint does not exist, stop
+			// the iterator and return a "404 page not found" HTTP handler.
+			break
 		}
 
-		// reset params; invalid route.
-		if steps[idx] != part.name {
-			return nil, errNoMatch
-		}
+		return end.Handler, params
 	}
 
-	return params, nil
+	return m.notFoundHandler(), nil
 }
 
 // Host registers a new Top-Level Domain (TLD), if necessary, and then returns
