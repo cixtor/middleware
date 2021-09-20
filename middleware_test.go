@@ -677,6 +677,55 @@ func TestMethodUNLOCK(t *testing.T) {
 	curl(t, "UNLOCK", "localhost", "http://localhost:60349/foobar", []byte("Hello World"))
 }
 
+func TestEndpointOrder(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.GET("/*", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("endpoint #7"))
+		})
+		router.GET("/help/:group/:question/*", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("endpoint #6"))
+		})
+		router.GET("/usr/local/:group/:package/*", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("endpoint #5"))
+		})
+		router.GET("/user/:userid", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("endpoint #4"))
+		})
+		router.GET("/auth/:sso", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("endpoint #3"))
+		})
+		router.GET("/blog/:name/slug", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("endpoint #2"))
+		})
+		router.GET("/help/:page/:group/comments", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("endpoint #1"))
+		})
+		_ = router.ListenAndServe(":60326")
+	}()
+
+	inputs := [][]string{
+		{"test_0", "/help/viva/family/comments", "endpoint #1"},
+		{"test_1", "/blog/hello-world/slug", "endpoint #2"},
+		{"test_2", "/auth/openid", "endpoint #3"},
+		{"test_3", "/user/12345", "endpoint #4"},
+		{"test_4", "/usr/local/etc/openssl/cert.pem", "endpoint #5"},
+		{"test_5", "/help/viva/family/foo/bar", "endpoint #6"},
+		{"test_6", "/help/viva/family/foobar", "endpoint #6"},
+		{"test_7", "/help/viva/family", "endpoint #7"},
+		{"test_8", "/any/thing", "endpoint #7"},
+		{"test_9", "/hello/world/how/are/you", "endpoint #7"},
+	}
+
+	for _, input := range inputs {
+		t.Run(input[0], func(t *testing.T) {
+			curl(t, "GET", "localhost", "http://localhost:60326"+input[1], []byte(input[2]))
+		})
+	}
+}
+
 func TestAmbiguousPath(t *testing.T) {
 	go func() {
 		router := middleware.New()
