@@ -266,12 +266,20 @@ func TestDirectoryListing(t *testing.T) {
 		log.Fatal(router.ListenAndServe(":60305"))
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60305/assets", []byte("Forbidden\n"))
-	curl(t, "GET", "localhost", "http://localhost:60305/assets/", []byte("Forbidden\n"))
-	curl(t, "GET", "localhost", "http://localhost:60305/assets/.git", []byte("Forbidden\n"))
-	curl(t, "GET", "localhost", "http://localhost:60305/assets/.git/", []byte("Forbidden\n"))
-	curl(t, "GET", "localhost", "http://localhost:60305/assets/.git/objects", []byte("Forbidden\n"))
-	curl(t, "GET", "localhost", "http://localhost:60305/assets/.git/objects/", []byte("Forbidden\n"))
+	inputs := [][]string{
+		{"test_0", "/assets", "404 page not found\n"},
+		{"test_1", "/assets/", "404 page not found\n"},
+		{"test_2", "/assets/.git", "Forbidden\n"},
+		{"test_3", "/assets/.git/", "Forbidden\n"},
+		{"test_4", "/assets/.git/objects", "Forbidden\n"},
+		{"test_5", "/assets/.git/objects/", "Forbidden\n"},
+	}
+
+	for _, input := range inputs {
+		t.Run(input[0], func(t *testing.T) {
+			curl(t, "GET", "localhost", "http://localhost:60305"+input[1], []byte(input[2]))
+		})
+	}
 }
 
 func TestSingleParam(t *testing.T) {
