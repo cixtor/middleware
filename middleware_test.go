@@ -766,6 +766,33 @@ func TestAmbiguousPath2(t *testing.T) {
 	curl(t, "GET", "localhost", "http://localhost:60351/foobar/-/foobar.tgz", []byte("package/archive"))
 }
 
+func TestAmbiguousPath3(t *testing.T) {
+	go func() {
+		router := middleware.New()
+		router.DiscardLogs()
+		defer router.Shutdown()
+		router.GET("/usr/local/:group/:user/*", func(w http.ResponseWriter, r *http.Request) {
+			group := middleware.Param(r, "group")
+			user := middleware.Param(r, "user")
+			w.Write([]byte(group + ":" + user))
+		})
+		_ = router.ListenAndServe(":60327")
+	}()
+
+	inputs := [][]string{
+		{"should not exist 1", "/usr/local", "404 page not found\n"},
+		{"should not exist 2", "/usr/local/etc", "404 page not found\n"},
+		{"should not exist 3", "/usr/local/etc/openssl", "404 page not found\n"},
+		{"should exist", "/usr/local/etc/openssl/cert.pem", "etc:openssl"},
+	}
+
+	for _, input := range inputs {
+		t.Run(input[0], func(t *testing.T) {
+			curl(t, "GET", "localhost", "http://localhost:60327"+input[1], []byte(input[2]))
+		})
+	}
+}
+
 type telemetry struct {
 	called bool
 	latest middleware.AccessLog
