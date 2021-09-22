@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"syscall"
@@ -87,6 +88,24 @@ func (crw *CustomResponseWriter) Write(b []byte) (int, error) {
 
 func (crw *CustomResponseWriter) WriteHeader(statusCode int) {
 	crw.code = statusCode
+}
+
+// BenchmarkServeHTTP checks the performance of the ServeHTTP method.
+func BenchmarkServeHTTP(b *testing.B) {
+	w := NewCustomResponseWriter()
+	r := httptest.NewRequest(http.MethodGet, "/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o"+
+		"/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z/a/b/c/d/e/f/g/h"+
+		"/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p"+
+		"/q/r/s/t/u/v/w/x/y/z/p/q/r/s/t/u/v/w/x/y/z/a/b/c/d/e/f/g/h/i/j/k/l/m"+
+		"/n/o/p/q/r/s/t/u/v/w/x/y/z/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u"+
+		"/v/w/x/y/z", nil)
+	router := middleware.New()
+	router.GET("/a/b/c/*", func(w http.ResponseWriter, r *http.Request) { /* ... */ })
+	router.DiscardLogs()
+
+	for n := 0; n < b.N; n++ {
+		router.ServeHTTP(w, r)
+	}
 }
 
 func TestIndex(t *testing.T) {
