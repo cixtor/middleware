@@ -64,6 +64,31 @@ func shouldNotCurl(t *testing.T, method string, hostname string, target string) 
 	t.Fatalf("%s %s should have failed", method, target)
 }
 
+type CustomResponseWriter struct {
+	body []byte
+	code int
+	head http.Header
+}
+
+func NewCustomResponseWriter() *CustomResponseWriter {
+	return &CustomResponseWriter{
+		head: http.Header{},
+	}
+}
+
+func (crw *CustomResponseWriter) Header() http.Header {
+	return crw.head
+}
+
+func (crw *CustomResponseWriter) Write(b []byte) (int, error) {
+	crw.body = b
+	return len(b), nil
+}
+
+func (crw *CustomResponseWriter) WriteHeader(statusCode int) {
+	crw.code = statusCode
+}
+
 func TestIndex(t *testing.T) {
 	go func() {
 		router := middleware.New()
