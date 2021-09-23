@@ -91,6 +91,8 @@ func (crw *CustomResponseWriter) WriteHeader(statusCode int) {
 }
 
 // BenchmarkServeHTTP checks the performance of the ServeHTTP method.
+//
+//	go test -bench .
 func BenchmarkServeHTTP(b *testing.B) {
 	w := NewCustomResponseWriter()
 	r := httptest.NewRequest(http.MethodGet, "/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o"+
@@ -106,6 +108,34 @@ func BenchmarkServeHTTP(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		router.ServeHTTP(w, r)
 	}
+}
+
+// FuzzServeHTTP checks for panics somewhere in the ServeHTTP operations.
+//
+//	go test -fuzz FuzzServeHTTP -fuzztime 30s
+func FuzzServeHTTP(f *testing.F) {
+	f.Add("GET", "/")
+	f.Add("POST", "/hello/world")
+	f.Add("HEAD", "/////hello/world")
+	f.Add("PUT", "/server-status")
+	f.Add("DELETE", "/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z")
+
+	w := NewCustomResponseWriter()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	h := func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("fuzz")) }
+	x := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("404 fuzz page"))
+	})
+
+	f.Fuzz(func(t *testing.T, method string, endpoint string) {
+		router := middleware.New()
+		router.DiscardLogs()
+		router.NotFound = x
+
+		router.Handle(method, endpoint, h)
+
+		router.ServeHTTP(w, r)
+	})
 }
 
 func TestIndex(t *testing.T) {
