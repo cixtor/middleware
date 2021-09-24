@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"path"
+	"strings"
 	"testing"
 )
 
@@ -109,6 +111,56 @@ func TestParseEndpoint(t *testing.T) {
 				if s != x.folders[i] {
 					t.Fatalf("incorrect endpoint folder:\n- [%d] %#v\n+ [%d] %#v", i, x.folders, i, end.Folders)
 				}
+			}
+		})
+	}
+}
+
+type InputEndpointMatch struct {
+	name     string
+	expected bool
+	endpoint string
+	rawURL   string
+}
+
+func TestEndpointMatch(t *testing.T) {
+	inputs := []InputEndpointMatch{
+		{name: "test_0", expected: true, endpoint: "/", rawURL: "/"},
+		{name: "test_1", expected: true, endpoint: "/", rawURL: "////"},
+		{name: "test_2", expected: true, endpoint: "/usr", rawURL: "/usr"},
+		{name: "test_3", expected: true, endpoint: "/usr", rawURL: "/usr/"},
+		{name: "test_4", expected: true, endpoint: "/usr", rawURL: "////usr"},
+		{name: "test_5", expected: true, endpoint: "/usr", rawURL: "////usr////"},
+		{name: "test_6", expected: false, endpoint: "/usr", rawURL: "/vsr"},
+		{name: "test_7", expected: true, endpoint: "/usr/local", rawURL: "/usr/local"},
+		{name: "test_8", expected: false, endpoint: "/usr/local", rawURL: "/usr/lacol"},
+		{name: "test_9", expected: false, endpoint: "/usr/local", rawURL: "/usr"},
+		{name: "test_10", expected: true, endpoint: "/usr/:local", rawURL: "/usr/local"},
+		{name: "test_11", expected: true, endpoint: "/usr/:group", rawURL: "/usr/local"},
+		{name: "test_12", expected: false, endpoint: "/usr/:group", rawURL: "/usr/local/etc"},
+		{name: "test_13", expected: true, endpoint: "/usr/local/etc/openssl/cert.pem", rawURL: "/usr/local/etc/openssl/cert.pem"},
+		{name: "test_14", expected: true, endpoint: "/usr/local/etc/openssl/:filename", rawURL: "/usr/local/etc/openssl/cert.pem"},
+		{name: "test_15", expected: true, endpoint: "/usr/local/etc/:package/:filename", rawURL: "/usr/local/etc/openssl/cert.pem"},
+		{name: "test_16", expected: true, endpoint: "/usr/local/:group/:package/:filename", rawURL: "/usr/local/etc/openssl/cert.pem"},
+		{name: "test_17", expected: true, endpoint: "/usr/local/:group/:package/*", rawURL: "/usr/local/etc/openssl/cert.pem"},
+		{name: "test_18", expected: true, endpoint: "/usr/local/:group/*", rawURL: "/usr/local/etc/openssl/cert.pem"},
+		{name: "test_19", expected: true, endpoint: "/usr/local/*", rawURL: "/usr/local/etc/openssl/cert.pem"},
+		{name: "test_20", expected: true, endpoint: "/usr/*", rawURL: "/usr/local/etc/openssl/cert.pem"},
+		{name: "test_21", expected: true, endpoint: "/*", rawURL: "/usr/local/etc/openssl/cert.pem"},
+		{name: "test_22", expected: true, endpoint: "/usr/local/:group/:package/cert.pem", rawURL: "/usr/local/etc/openssl/cert.pem"},
+		{name: "test_23", expected: true, endpoint: "/usr/local/:group/openssl/cert.pem", rawURL: "/usr/local/etc/openssl/cert.pem"},
+		{name: "test_24", expected: false, endpoint: "/usr/local/:group/openssl/cert.pem", rawURL: "/usr/local/etc/openzzl/cert.pem"},
+		{name: "test_25", expected: false, endpoint: "/usr/local/:group/:package/cert.pem", rawURL: "/usr/local/etc/openssl/cert.key"},
+		{name: "test_26", expected: false, endpoint: "/usr/local/:group/:package/*", rawURL: "/usr/local/etc/openssl"},
+	}
+
+	for _, x := range inputs {
+		t.Run(x.name, func(t *testing.T) {
+			arr := strings.Split(path.Clean(x.rawURL), "/")
+			end := parseEndpoint(x.endpoint, nil)
+
+			if _, ok := end.Match(arr); ok != x.expected {
+				t.Fatalf("incorrect endpoint match result:\n- %s\n~ %s\n+ %s", x.endpoint, x.rawURL, end.String())
 			}
 		})
 	}
