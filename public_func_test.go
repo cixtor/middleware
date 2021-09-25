@@ -16,26 +16,32 @@ import (
 )
 
 func curl(t *testing.T, method string, hostname string, target string, expected []byte) {
-	var err error
-	var out []byte
-	var req *http.Request
-	var res *http.Response
+	if len(target) >= 2 && target[0:3] == "<>:" {
+		// <>:00000/hello/world expands into...
+		target = "http://localhost:" + target[3:]
+	}
 
-	if req, err = http.NewRequest(method, target, nil); err != nil {
+	req, err := http.NewRequest(method, target, nil)
+
+	if err != nil {
 		t.Fatalf("http.NewRequest %s", err)
 		return
 	}
 
 	req.Host = hostname
 
-	if res, err = http.DefaultClient.Do(req); err != nil {
+	res, err := http.DefaultClient.Do(req)
+
+	if err != nil {
 		t.Fatalf("http.DefaultClient %s", err)
 		return
 	}
 
 	defer res.Body.Close()
 
-	if out, err = ioutil.ReadAll(res.Body); err != nil {
+	out, err := ioutil.ReadAll(res.Body)
+
+	if err != nil {
 		t.Fatalf("ioutil.ReadAll %s", err)
 		return
 	}
@@ -75,7 +81,7 @@ func TestIndex(t *testing.T) {
 		_ = router.ListenAndServe(":60302")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60302/foobar", []byte("Hello World"))
+	curl(t, "GET", "localhost", "<>:60302/foobar", []byte("Hello World"))
 }
 
 func TestUse(t *testing.T) {
@@ -116,7 +122,7 @@ func TestUse(t *testing.T) {
 		_ = router.ListenAndServe(":60333")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60333/foobar", []byte("lorem:ipsum:dolor"))
+	curl(t, "GET", "localhost", "<>:60333/foobar", []byte("lorem:ipsum:dolor"))
 }
 
 func TestUse2(t *testing.T) {
@@ -154,7 +160,7 @@ func TestUse2(t *testing.T) {
 		_ = router.ListenAndServe(":60334")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60334/foobar", []byte("<1:lorem><2:ipsum><3:dolor><4:foobar>"))
+	curl(t, "GET", "localhost", "<>:60334/foobar", []byte("<1:lorem><2:ipsum><3:dolor><4:foobar>"))
 }
 
 func TestPOST(t *testing.T) {
@@ -168,7 +174,7 @@ func TestPOST(t *testing.T) {
 		_ = router.ListenAndServe(":60303")
 	}()
 
-	curl(t, "POST", "localhost", "http://localhost:60303/foobar", []byte("Hello World POST"))
+	curl(t, "POST", "localhost", "<>:60303/foobar", []byte("Hello World POST"))
 }
 
 func TestNotFound(t *testing.T) {
@@ -182,7 +188,7 @@ func TestNotFound(t *testing.T) {
 		_ = router.ListenAndServe(":60304")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60304/notfound", []byte("404 page not found\n"))
+	curl(t, "GET", "localhost", "<>:60304/notfound", []byte("404 page not found\n"))
 }
 
 func TestNotFoundSimilar(t *testing.T) {
@@ -196,7 +202,7 @@ func TestNotFoundSimilar(t *testing.T) {
 		_ = router.ListenAndServe(":60314")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60314/lorem/ipsum/dolores", []byte("404 page not found\n"))
+	curl(t, "GET", "localhost", "<>:60314/lorem/ipsum/dolores", []byte("404 page not found\n"))
 }
 
 func TestNotFoundInvalid(t *testing.T) {
@@ -211,7 +217,7 @@ func TestNotFoundInvalid(t *testing.T) {
 		_ = router.ListenAndServe(":60317")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60317/test", []byte("404 page not found\n"))
+	curl(t, "GET", "localhost", "<>:60317/test", []byte("404 page not found\n"))
 }
 
 func TestNotFoundCustom(t *testing.T) {
@@ -228,7 +234,7 @@ func TestNotFoundCustom(t *testing.T) {
 		_ = router.ListenAndServe(":60318")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60318/test", []byte("404 page does not exist"))
+	curl(t, "GET", "localhost", "<>:60318/test", []byte("404 page does not exist"))
 }
 
 func TestNotFoundCustomWithInterceptor(t *testing.T) {
@@ -254,7 +260,7 @@ func TestNotFoundCustomWithInterceptor(t *testing.T) {
 		_ = router.ListenAndServe(":60319")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60319/test", []byte("hello interceptor\n404 missing page\n"))
+	curl(t, "GET", "localhost", "<>:60319/test", []byte("hello interceptor\n404 missing page\n"))
 }
 
 func TestDirectoryListing(t *testing.T) {
@@ -277,7 +283,7 @@ func TestDirectoryListing(t *testing.T) {
 
 	for _, input := range inputs {
 		t.Run(input[0], func(t *testing.T) {
-			curl(t, "GET", "localhost", "http://localhost:60305"+input[1], []byte(input[2]))
+			curl(t, "GET", "localhost", "<>:60305"+input[1], []byte(input[2]))
 		})
 	}
 }
@@ -293,7 +299,7 @@ func TestSingleParam(t *testing.T) {
 		_ = router.ListenAndServe(":60306")
 	}()
 
-	curl(t, "PUT", "localhost", "http://localhost:60306/hello/john", []byte("john"))
+	curl(t, "PUT", "localhost", "<>:60306/hello/john", []byte("john"))
 }
 
 func TestMultiParam(t *testing.T) {
@@ -309,7 +315,7 @@ func TestMultiParam(t *testing.T) {
 		_ = router.ListenAndServe(":60307")
 	}()
 
-	curl(t, "PATCH", "localhost", "http://localhost:60307/account/info", []byte("page /account/info"))
+	curl(t, "PATCH", "localhost", "<>:60307/account/info", []byte("page /account/info"))
 }
 
 func TestMultiParamPrefix(t *testing.T) {
@@ -325,7 +331,7 @@ func TestMultiParamPrefix(t *testing.T) {
 		_ = router.ListenAndServe(":60308")
 	}()
 
-	curl(t, "DELETE", "localhost", "http://localhost:60308/foo/account/info", []byte("page /foo/account/info"))
+	curl(t, "DELETE", "localhost", "<>:60308/foo/account/info", []byte("page /foo/account/info"))
 }
 
 func TestComplexParam(t *testing.T) {
@@ -339,7 +345,7 @@ func TestComplexParam(t *testing.T) {
 		_ = router.ListenAndServe(":60312")
 	}()
 
-	curl(t, "PUT", "localhost", "http://localhost:60312/account/alice/info", []byte("alice"))
+	curl(t, "PUT", "localhost", "<>:60312/account/alice/info", []byte("alice"))
 }
 
 func TestServeFiles(t *testing.T) {
@@ -358,7 +364,7 @@ func TestServeFiles(t *testing.T) {
 		return
 	}
 
-	curl(t, "GET", "localhost", "http://localhost:60311/cdn/LICENSE.md", data)
+	curl(t, "GET", "localhost", "<>:60311/cdn/LICENSE.md", data)
 }
 
 func TestServeFilesFake(t *testing.T) {
@@ -372,7 +378,7 @@ func TestServeFilesFake(t *testing.T) {
 		_ = router.ListenAndServe(":60335")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60335/updates/appcast.xml", []byte("<xml></xml>"))
+	curl(t, "GET", "localhost", "<>:60335/updates/appcast.xml", []byte("<xml></xml>"))
 }
 
 func TestServeFilesFakeScript(t *testing.T) {
@@ -386,8 +392,8 @@ func TestServeFilesFakeScript(t *testing.T) {
 		_ = router.ListenAndServe(":60336")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60336/tag/js/gpt.js", []byte("(function(E){})"))
-	curl(t, "GET", "localhost", "http://localhost:60336/tag/js/foo.js", []byte("404 page not found\n"))
+	curl(t, "GET", "localhost", "<>:60336/tag/js/gpt.js", []byte("(function(E){})"))
+	curl(t, "GET", "localhost", "<>:60336/tag/js/foo.js", []byte("404 page not found\n"))
 }
 
 func TestTrailingSlash(t *testing.T) {
@@ -401,7 +407,7 @@ func TestTrailingSlash(t *testing.T) {
 		_ = router.ListenAndServe(":60313")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60313/hello/world/", []byte("Hello World"))
+	curl(t, "GET", "localhost", "<>:60313/hello/world/", []byte("Hello World"))
 }
 
 func TestTrailingSlashDynamic(t *testing.T) {
@@ -415,7 +421,7 @@ func TestTrailingSlashDynamic(t *testing.T) {
 		_ = router.ListenAndServe(":60316")
 	}()
 
-	curl(t, "POST", "localhost", "http://localhost:60316/api/123/store/", []byte("store"))
+	curl(t, "POST", "localhost", "<>:60316/api/123/store/", []byte("store"))
 }
 
 func TestTrailingSlashDynamicMultiple(t *testing.T) {
@@ -429,7 +435,7 @@ func TestTrailingSlashDynamicMultiple(t *testing.T) {
 		_ = router.ListenAndServe(":60324")
 	}()
 
-	curl(t, "POST", "localhost", "http://localhost:60324/api/123/////store/", []byte("dynamic"))
+	curl(t, "POST", "localhost", "<>:60324/api/123/////store/", []byte("dynamic"))
 }
 
 func TestMultipleRoutes(t *testing.T) {
@@ -446,8 +452,8 @@ func TestMultipleRoutes(t *testing.T) {
 		_ = router.ListenAndServe(":60315")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60315/hello/world/", []byte("Hello World"))
-	curl(t, "GET", "localhost", "http://localhost:60315/lorem/ipsum/", []byte("Lorem Ipsum"))
+	curl(t, "GET", "localhost", "<>:60315/hello/world/", []byte("Hello World"))
+	curl(t, "GET", "localhost", "<>:60315/lorem/ipsum/", []byte("Lorem Ipsum"))
 }
 
 func TestRouteWithAsterisk(t *testing.T) {
@@ -461,7 +467,7 @@ func TestRouteWithAsterisk(t *testing.T) {
 		_ = router.ListenAndServe(":60322")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60322/home/users/a/b/root", []byte("robot"))
+	curl(t, "GET", "localhost", "<>:60322/home/users/a/b/root", []byte("robot"))
 }
 
 func TestRouteWithExtraSlash(t *testing.T) {
@@ -475,7 +481,7 @@ func TestRouteWithExtraSlash(t *testing.T) {
 		_ = router.ListenAndServe(":60323")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60323/hello/world", []byte("hello"))
+	curl(t, "GET", "localhost", "<>:60323/hello/world", []byte("hello"))
 }
 
 func TestRouteWithExtraSlash2(t *testing.T) {
@@ -489,7 +495,7 @@ func TestRouteWithExtraSlash2(t *testing.T) {
 		_ = router.ListenAndServe(":60325")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60325/hello/world", []byte("hello"))
+	curl(t, "GET", "localhost", "<>:60325/hello/world", []byte("hello"))
 }
 
 func TestMultipleDynamic(t *testing.T) {
@@ -505,7 +511,7 @@ func TestMultipleDynamic(t *testing.T) {
 		_ = router.ListenAndServe(":60332")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60332/hello/john/smith/info", []byte("Hello john smith"))
+	curl(t, "GET", "localhost", "<>:60332/hello/john/smith/info", []byte("Hello john smith"))
 }
 
 func TestMultipleHosts(t *testing.T) {
@@ -522,8 +528,8 @@ func TestMultipleHosts(t *testing.T) {
 		_ = router.ListenAndServe(":60337")
 	}()
 
-	curl(t, "GET", "foo.test", "http://localhost:60337/hello/john", []byte("@foo.test:john"))
-	curl(t, "GET", "bar.test", "http://localhost:60337/hello/alice", []byte("@bar.test:alice"))
+	curl(t, "GET", "foo.test", "<>:60337/hello/john", []byte("@foo.test:john"))
+	curl(t, "GET", "bar.test", "<>:60337/hello/alice", []byte("@bar.test:alice"))
 }
 
 func TestDefaultHost(t *testing.T) {
@@ -540,9 +546,9 @@ func TestDefaultHost(t *testing.T) {
 		_ = router.ListenAndServe(":60338")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60338/hello/john", []byte("Hello john"))
-	curl(t, "GET", "foo.test", "http://localhost:60338/world/earth", []byte("World earth"))
-	curl(t, "GET", "bar.test", "http://localhost:60338/anything", []byte("404 page not found\n"))
+	curl(t, "GET", "localhost", "<>:60338/hello/john", []byte("Hello john"))
+	curl(t, "GET", "foo.test", "<>:60338/world/earth", []byte("World earth"))
+	curl(t, "GET", "bar.test", "<>:60338/anything", []byte("404 page not found\n"))
 }
 
 func TestMethodHandle(t *testing.T) {
@@ -556,7 +562,7 @@ func TestMethodHandle(t *testing.T) {
 		_ = router.ListenAndServe(":60340")
 	}()
 
-	curl(t, "HELLOWORLD", "localhost", "http://localhost:60340/foobar", []byte("Hello World"))
+	curl(t, "HELLOWORLD", "localhost", "<>:60340/foobar", []byte("Hello World"))
 }
 
 func TestMethodCONNECT(t *testing.T) {
@@ -570,7 +576,7 @@ func TestMethodCONNECT(t *testing.T) {
 		_ = router.ListenAndServe(":60341")
 	}()
 
-	curl(t, "CONNECT", "localhost", "http://localhost:60341/foobar", []byte("Hello World"))
+	curl(t, "CONNECT", "localhost", "<>:60341/foobar", []byte("Hello World"))
 }
 
 func TestMethodTRACE(t *testing.T) {
@@ -584,7 +590,7 @@ func TestMethodTRACE(t *testing.T) {
 		_ = router.ListenAndServe(":60342")
 	}()
 
-	curl(t, "TRACE", "localhost", "http://localhost:60342/foobar", []byte("Hello World"))
+	curl(t, "TRACE", "localhost", "<>:60342/foobar", []byte("Hello World"))
 }
 
 func TestMethodCOPY(t *testing.T) {
@@ -598,7 +604,7 @@ func TestMethodCOPY(t *testing.T) {
 		_ = router.ListenAndServe(":60343")
 	}()
 
-	curl(t, "COPY", "localhost", "http://localhost:60343/foobar", []byte("Hello World"))
+	curl(t, "COPY", "localhost", "<>:60343/foobar", []byte("Hello World"))
 }
 
 func TestMethodLOCK(t *testing.T) {
@@ -612,7 +618,7 @@ func TestMethodLOCK(t *testing.T) {
 		_ = router.ListenAndServe(":60344")
 	}()
 
-	curl(t, "LOCK", "localhost", "http://localhost:60344/foobar", []byte("Hello World"))
+	curl(t, "LOCK", "localhost", "<>:60344/foobar", []byte("Hello World"))
 }
 
 func TestMethodMKCOL(t *testing.T) {
@@ -626,7 +632,7 @@ func TestMethodMKCOL(t *testing.T) {
 		_ = router.ListenAndServe(":60345")
 	}()
 
-	curl(t, "MKCOL", "localhost", "http://localhost:60345/foobar", []byte("Hello World"))
+	curl(t, "MKCOL", "localhost", "<>:60345/foobar", []byte("Hello World"))
 }
 
 func TestMethodMOVE(t *testing.T) {
@@ -640,7 +646,7 @@ func TestMethodMOVE(t *testing.T) {
 		_ = router.ListenAndServe(":60346")
 	}()
 
-	curl(t, "MOVE", "localhost", "http://localhost:60346/foobar", []byte("Hello World"))
+	curl(t, "MOVE", "localhost", "<>:60346/foobar", []byte("Hello World"))
 }
 
 func TestMethodPROPFIND(t *testing.T) {
@@ -654,7 +660,7 @@ func TestMethodPROPFIND(t *testing.T) {
 		_ = router.ListenAndServe(":60347")
 	}()
 
-	curl(t, "PROPFIND", "localhost", "http://localhost:60347/foobar", []byte("Hello World"))
+	curl(t, "PROPFIND", "localhost", "<>:60347/foobar", []byte("Hello World"))
 }
 
 func TestMethodPROPPATCH(t *testing.T) {
@@ -668,7 +674,7 @@ func TestMethodPROPPATCH(t *testing.T) {
 		_ = router.ListenAndServe(":60348")
 	}()
 
-	curl(t, "PROPPATCH", "localhost", "http://localhost:60348/foobar", []byte("Hello World"))
+	curl(t, "PROPPATCH", "localhost", "<>:60348/foobar", []byte("Hello World"))
 }
 
 func TestMethodUNLOCK(t *testing.T) {
@@ -682,7 +688,7 @@ func TestMethodUNLOCK(t *testing.T) {
 		_ = router.ListenAndServe(":60349")
 	}()
 
-	curl(t, "UNLOCK", "localhost", "http://localhost:60349/foobar", []byte("Hello World"))
+	curl(t, "UNLOCK", "localhost", "<>:60349/foobar", []byte("Hello World"))
 }
 
 func TestEndpointOrder(t *testing.T) {
@@ -729,7 +735,7 @@ func TestEndpointOrder(t *testing.T) {
 
 	for _, input := range inputs {
 		t.Run(input[0], func(t *testing.T) {
-			curl(t, "GET", "localhost", "http://localhost:60326"+input[1], []byte(input[2]))
+			curl(t, "GET", "localhost", "<>:60326"+input[1], []byte(input[2]))
 		})
 	}
 }
@@ -748,8 +754,8 @@ func TestAmbiguousPath(t *testing.T) {
 		_ = router.ListenAndServe(":60350")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60350/foobar", []byte("package"))
-	curl(t, "GET", "localhost", "http://localhost:60350/foobar/-/foobar.tgz", []byte("package/archive"))
+	curl(t, "GET", "localhost", "<>:60350/foobar", []byte("package"))
+	curl(t, "GET", "localhost", "<>:60350/foobar/-/foobar.tgz", []byte("package/archive"))
 }
 
 func TestAmbiguousPath2(t *testing.T) {
@@ -769,9 +775,9 @@ func TestAmbiguousPath2(t *testing.T) {
 		_ = router.ListenAndServe(":60351")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60351/foobar", []byte("package"))
-	curl(t, "GET", "localhost", "http://localhost:60351/@babel/core", []byte("module/package"))
-	curl(t, "GET", "localhost", "http://localhost:60351/foobar/-/foobar.tgz", []byte("package/archive"))
+	curl(t, "GET", "localhost", "<>:60351/foobar", []byte("package"))
+	curl(t, "GET", "localhost", "<>:60351/@babel/core", []byte("module/package"))
+	curl(t, "GET", "localhost", "<>:60351/foobar/-/foobar.tgz", []byte("package/archive"))
 }
 
 func TestAmbiguousPath3(t *testing.T) {
@@ -796,7 +802,7 @@ func TestAmbiguousPath3(t *testing.T) {
 
 	for _, input := range inputs {
 		t.Run(input[0], func(t *testing.T) {
-			curl(t, "GET", "localhost", "http://localhost:60327"+input[1], []byte(input[2]))
+			curl(t, "GET", "localhost", "<>:60327"+input[1], []byte(input[2]))
 		})
 	}
 }
@@ -828,7 +834,7 @@ func TestResponseCallback(t *testing.T) {
 		_ = router.ListenAndServe(":60339")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60339/?hello=world&foo=bar", []byte("Hello World"))
+	curl(t, "GET", "localhost", "<>:60339/?hello=world&foo=bar", []byte("Hello World"))
 
 	if !tracer.called {
 		t.Fatal("http tracer was not called")
@@ -886,7 +892,7 @@ func TestShutdown(t *testing.T) {
 
 	go router.ListenAndServe(":60309")
 
-	curl(t, "GET", "localhost", "http://localhost:60309/s", []byte("xyz"))
+	curl(t, "GET", "localhost", "<>:60309/s", []byte("xyz"))
 	router.Shutdown()
 	shouldNotCurl(t, "GET", "localhost", "http://localhost:60309/s")
 }
@@ -915,7 +921,7 @@ func TestShutdownWithChannel(t *testing.T) {
 
 	go router.ListenAndServe(":60310")
 
-	curl(t, "GET", "localhost", "http://localhost:60310/swc", []byte("abc"))
+	curl(t, "GET", "localhost", "<>:60310/swc", []byte("abc"))
 	quit <- CustomSignal(60310) // Call middleware.Shutdown to stop the server.
 
 	<-next // Wait for middleware.Shutdown to finish.
@@ -936,7 +942,7 @@ func TestShutdownAddon(t *testing.T) {
 
 	go router.ListenAndServe(":60320")
 
-	curl(t, "GET", "localhost", "http://localhost:60320/s", []byte("XD"))
+	curl(t, "GET", "localhost", "<>:60320/s", []byte("XD"))
 	router.Shutdown()
 	shouldNotCurl(t, "GET", "localhost", "http://localhost:60320/s")
 
@@ -1024,7 +1030,7 @@ func TestLoggerAndNewLines(t *testing.T) {
 		router.ListenAndServe(":60321")
 	}()
 
-	curl(t, "GET", "localhost", "http://localhost:60321/foo%0abar", []byte("Method Not Allowed\n"))
+	curl(t, "GET", "localhost", "<>:60321/foo%0abar", []byte("Method Not Allowed\n"))
 
 	expected := `"GET /foo\nbar HTTP/1.1"`
 
