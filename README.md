@@ -25,7 +25,6 @@ Below is a basic example:
 package main
 
 import (
-    "log"
     "github.com/cixtor/middleware"
 )
 
@@ -91,13 +90,6 @@ A request to a nonexistent file returns "404 Not Found".
 You can implement a graceful shutdown with the following code:
 
 ```golang
-import (
-    "log"
-    "os"
-    "os/signal"
-    "syscall"
-}
-
 func main() {
     quit := make(chan os.Signal, 1)
     signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
