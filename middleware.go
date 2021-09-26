@@ -16,6 +16,8 @@ const nohost = "_"
 // errNoMatch represents a simple matching error.
 var errNoMatch = errors.New("no matching route")
 
+// Middleware is an HTTP request multiplexer.
+//
 // Middleware is the base of the library and the entry point for every HTTP
 // request. It acts as a modular interface that wraps around http.Handler to
 // add additional functionality like custom routes, separated HTTP method

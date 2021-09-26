@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -59,7 +60,7 @@ import (
 //	}
 type Logger interface {
 	// ListeningOn is called once, just before the execution of ListenAndServe.
-	ListeningOn(string)
+	ListeningOn(net.Addr)
 	// Shutdown is called once, immediately after the graceful server shutdown.
 	Shutdown(error)
 	// Log is called every time the web server handles a request.
@@ -190,7 +191,7 @@ func (a AccessLog) CombinedLog() string {
 type emptyLogger struct{}
 
 // ListeningOn implements the ListeningOn method for the Logger interface.
-func (l emptyLogger) ListeningOn(addr string) {}
+func (l emptyLogger) ListeningOn(addr net.Addr) {}
 
 // Shutdown implements the Shutdown method for the Logger interface.
 func (l emptyLogger) Shutdown(err error) {}
@@ -211,7 +212,7 @@ func NewBasicLogger() Logger {
 }
 
 // ListeningOn implements the ListeningOn method for the Logger interface.
-func (l BasicLogger) ListeningOn(addr string) {
+func (l BasicLogger) ListeningOn(addr net.Addr) {
 	l.logger.Println("listening on", addr)
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -812,7 +813,7 @@ type telemetry struct {
 	latest middleware.AccessLog
 }
 
-func (t telemetry) ListeningOn(addr string) {}
+func (t telemetry) ListeningOn(addr net.Addr) {}
 
 func (t telemetry) Shutdown(err error) {}
 
@@ -1012,7 +1013,7 @@ type LoggerAndNewLines struct {
 	metadata middleware.AccessLog
 }
 
-func (l LoggerAndNewLines) ListeningOn(addr string) {}
+func (l LoggerAndNewLines) ListeningOn(addr net.Addr) {}
 
 func (l LoggerAndNewLines) Shutdown(err error) {}
 
