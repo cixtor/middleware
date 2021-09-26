@@ -54,23 +54,23 @@ srv.ShutdownTimeout   = time.Millisecond * 100
 Base your calculations on this HTTP request diagram:
 
 ```plain
-┌──────────────────────────────────http.Request───────────────────────────────────┐
-│ Accept                                                                          │
-│ ┌──────┬───────────┬──────────────────────────┬──────────────────┬────────────┐ │
-│ │      │    TLS    │         Request          │     Response     │            │ │
-│ │ Wait │ Handshake ├───────────────────┬──────┼───────────┬──────┤    Idle    │ │
-│ │      │           │      Headers      │ Body │  Headers  │ Body │            │ │
-│ └──────┴───────────┴───────────────────┴──────┴───────────┴──────┴────────────┘ │
-│                                        ├───────ServerHTTP────────┤              │
-│                                                                    IdleTimeout  │
-│                    ├─ReadHeaderTimeout─┤                         ├(keep-alive)┤ │
-│                                                                                 │
-│ ├──────────────────ReadTimeout────────────────┤                                 │
-│                                                                                 │
-│ ├ ─ ─ ─ ─WriteTimeout (TLS only) ─ ─ ─ ┼──────WriteTimeout──────┤               │
-│                                                                                 │
-│                                        ├───http.TimeoutHandler──┤               │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────http.Request──────────────────────────────────┐
+│ Accept                                                                       │
+│ ┌──────┬───────────┬────────────────────────┬────────────────┬─────────────┐ │
+│ │      │    TLS    │        Request         │    Response    │             │ │
+│ │ Wait │ Handshake ├─────────────────┬──────┼─────────┬──────┤    Idle     │ │
+│ │      │           │     Headers     │ Body │ Headers │ Body │             │ │
+│ └──────┴───────────┴─────────────────┴──────┴─────────┴──────┴─────────────┘ │
+│                                      ├──────ServerHTTP───────┤               │
+│                                                                              │
+│                    ├ReadHeaderTimeout┤                       ├─IdleTimeout─┤ │
+│                                                                (KeepAlive)   │
+│ ├────────────────ReadTimeout────────────────┤                                │
+│                                                                              │
+│ ├ ─ ─ ──WriteTimeout (TLS only) ─ ─ ─┼─────WriteTimeout──────┤               │
+│                                                                              │
+│                                      ├──http.TimeoutHandler──┤               │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Serving Static Files
