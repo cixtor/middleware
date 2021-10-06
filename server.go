@@ -64,8 +64,27 @@ func (m *Middleware) resolveTCPAddr(address string) (net.Addr, error) {
 }
 
 // FreePort returns a free TCP port from the local machine.
+//
+// An ephemeral port is a communications endpoint (port) of a transport layer
+// protocol of the Internet protocol suite that is used for only a short period
+// of time for the duration of a communication session. Such short-lived ports
+// are allocated automatically within a predefined range of port numbers by the
+// IP stack software of a computer operating system. The Transmission Control
+// Protocol (TCP), the User Datagram Protocol (UDP), and the Stream Control
+// Transmission Protocol (SCTP) typically use an ephemeral port for the
+// client-end of a client–server communication.
+//
+// The allocation of an ephemeral port is temporary and only valid for the
+// duration of the communication session. After completion of the session, the
+// port is destroyed and the port number becomes available for reuse, but many
+// implementations simply increment the last used port number until the
+// ephemeral port range is exhausted, when the numbers roll over
+//
+// The RFC 6056 says that the range for ephemeral ports should be 1024-65535.
+//
+// Source: https://en.wikipedia.org/wiki/Ephemeral_port
 func (m *Middleware) FreePort() (net.Addr, error) {
-	return m.resolveTCPAddr(":0")
+	return m.resolveTCPAddr("127.0.0.1:0")
 }
 
 // ListenAndServe listens on a TCP network address and then calls server.Serve

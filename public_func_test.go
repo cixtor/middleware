@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -16,12 +15,21 @@ import (
 	"github.com/cixtor/middleware"
 )
 
-func curl(t *testing.T, method string, hostname string, target string, expected []byte) {
-	if len(target) >= 2 && target[0:3] == "<>:" {
-		// <>:00000/hello/world expands into...
-		target = "http://localhost:" + target[3:]
+// newTestServer returns a server and an ephemeral port to listen.
+func newTestServer(t *testing.T) (*middleware.Middleware, net.Addr) {
+	srv := middleware.New()
+
+	addr, err := srv.FreePort()
+
+	if err != nil {
+		t.Fatal("shu", err)
 	}
 
+	return srv, addr
+}
+
+func curl(t *testing.T, method string, host string, addr net.Addr, endpoint string, expected []byte) {
+	target := "http://" + addr.String() + endpoint
 	req, err := http.NewRequest(method, target, nil)
 
 	if err != nil {
@@ -29,7 +37,7 @@ func curl(t *testing.T, method string, hostname string, target string, expected 
 		return
 	}
 
-	req.Host = hostname
+	req.Host = host
 
 	res, err := http.DefaultClient.Do(req)
 
@@ -53,7 +61,8 @@ func curl(t *testing.T, method string, hostname string, target string, expected 
 	}
 }
 
-func shouldNotCurl(t *testing.T, method string, hostname string, target string) {
+func shouldNotCurl(t *testing.T, method string, host string, addr net.Addr, endpoint string) {
+	target := "http://" + addr.String() + endpoint
 	req, err := http.NewRequest(method, target, nil)
 
 	if err != nil {
@@ -61,7 +70,7 @@ func shouldNotCurl(t *testing.T, method string, hostname string, target string) 
 		return
 	}
 
-	req.Host = hostname
+	req.Host = host
 
 	if _, err := http.DefaultClient.Do(req); errors.Is(err, syscall.ECONNREFUSED) {
 		// Detect "connection refused" error and return as a successful call.
@@ -72,20 +81,20 @@ func shouldNotCurl(t *testing.T, method string, hostname string, target string) 
 }
 
 func TestIndex(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60302")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60302/foobar", []byte("Hello World"))
+	curl(t, "GET", "localhost", addr, "/foobar", []byte("Hello World"))
 }
 
 func TestUse(t *testing.T) {
+	srv, addr := newTestServer(t)
+
 	lorem := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("lorem", "lorem")
@@ -107,26 +116,25 @@ func TestUse(t *testing.T) {
 		})
 	}
 
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		router.Use(lorem)
-		router.Use(ipsum)
-		router.Use(dolor)
-		defer router.Shutdown()
-		router.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			a := w.Header().Get("lorem")
-			b := w.Header().Get("ipsum")
-			c := w.Header().Get("dolor")
-			w.Write([]byte(a + ":" + b + ":" + c))
-		})
-		_ = router.ListenAndServe(":60333")
-	}()
+	srv.DiscardLogs()
+	srv.Use(lorem)
+	srv.Use(ipsum)
+	srv.Use(dolor)
+	defer srv.Shutdown()
+	srv.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		a := w.Header().Get("lorem")
+		b := w.Header().Get("ipsum")
+		c := w.Header().Get("dolor")
+		w.Write([]byte(a + ":" + b + ":" + c))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60333/foobar", []byte("lorem:ipsum:dolor"))
+	curl(t, "GET", "localhost", addr, "/foobar", []byte("lorem:ipsum:dolor"))
 }
 
 func TestUse2(t *testing.T) {
+	srv, addr := newTestServer(t)
+
 	lorem := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("<1:lorem>"))
@@ -148,130 +156,113 @@ func TestUse2(t *testing.T) {
 		})
 	}
 
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("<4:foobar>"))
-		})
-		router.Use(lorem)
-		router.Use(ipsum)
-		router.Use(dolor)
-		_ = router.ListenAndServe(":60334")
-	}()
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<4:foobar>"))
+	})
+	srv.Use(lorem)
+	srv.Use(ipsum)
+	srv.Use(dolor)
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60334/foobar", []byte("<1:lorem><2:ipsum><3:dolor><4:foobar>"))
+	curl(t, "GET", "localhost", addr, "/foobar", []byte("<1:lorem><2:ipsum><3:dolor><4:foobar>"))
 }
 
 func TestPOST(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.POST("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World POST"))
-		})
-		_ = router.ListenAndServe(":60303")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.POST("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World POST"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "POST", "localhost", "<>:60303/foobar", []byte("Hello World POST"))
+	curl(t, "POST", "localhost", addr, "/foobar", []byte("Hello World POST"))
 }
 
 func TestNotFound(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World GET"))
-		})
-		_ = router.ListenAndServe(":60304")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World GET"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60304/notfound", []byte("404 page not found\n"))
+	curl(t, "GET", "localhost", addr, "/notfound", []byte("404 page not found\n"))
 }
 
 func TestNotFoundSimilar(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/lorem/ipsum/dolor", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World GET"))
-		})
-		_ = router.ListenAndServe(":60314")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/lorem/ipsum/dolor", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World GET"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60314/lorem/ipsum/dolores", []byte("404 page not found\n"))
+	curl(t, "GET", "localhost", addr, "/lorem/ipsum/dolores", []byte("404 page not found\n"))
 }
 
 func TestNotFoundInvalid(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		router.NotFound = nil
-		defer router.Shutdown()
-		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World GET"))
-		})
-		_ = router.ListenAndServe(":60317")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	srv.NotFound = nil
+	defer srv.Shutdown()
+	srv.GET("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World GET"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60317/test", []byte("404 page not found\n"))
+	curl(t, "GET", "localhost", addr, "/test", []byte("404 page not found\n"))
 }
 
 func TestNotFoundCustom(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("404 page does not exist"))
-		})
-		defer router.Shutdown()
-		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World GET"))
-		})
-		_ = router.ListenAndServe(":60318")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	srv.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("404 page does not exist"))
+	})
+	defer srv.Shutdown()
+	srv.GET("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World GET"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60318/test", []byte("404 page does not exist"))
+	curl(t, "GET", "localhost", addr, "/test", []byte("404 page does not exist"))
 }
 
 func TestNotFoundCustomWithInterceptor(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("404 missing page\n"))
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	srv.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("404 missing page\n"))
+	})
+	srv.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/test" {
+				w.Write([]byte("hello interceptor\n"))
+				// return /* do not return */
+			}
+			next.ServeHTTP(w, r)
 		})
-		router.Use(func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/test" {
-					w.Write([]byte("hello interceptor\n"))
-					// return /* do not return */
-				}
-				next.ServeHTTP(w, r)
-			})
-		})
-		defer router.Shutdown()
-		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World GET"))
-		})
-		_ = router.ListenAndServe(":60319")
-	}()
+	})
+	defer srv.Shutdown()
+	srv.GET("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World GET"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60319/test", []byte("hello interceptor\n404 missing page\n"))
+	curl(t, "GET", "localhost", addr, "/test", []byte("hello interceptor\n404 missing page\n"))
 }
 
 func TestDirectoryListing(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.STATIC(".", "/assets")
-		log.Fatal(router.ListenAndServe(":60305"))
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.STATIC(".", "/assets")
+	go srv.ListenAndServe(addr.String())
 
 	inputs := [][]string{
 		{"test_0", "/assets", "404 page not found\n"},
@@ -284,79 +275,69 @@ func TestDirectoryListing(t *testing.T) {
 
 	for _, input := range inputs {
 		t.Run(input[0], func(t *testing.T) {
-			curl(t, "GET", "localhost", "<>:60305"+input[1], []byte(input[2]))
+			curl(t, "GET", "localhost", addr, input[1], []byte(input[2]))
 		})
 	}
 }
 
 func TestSingleParam(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.PUT("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(middleware.Param(r, "name")))
-		})
-		_ = router.ListenAndServe(":60306")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.PUT("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(middleware.Param(r, "name")))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "PUT", "localhost", "<>:60306/hello/john", []byte("john"))
+	curl(t, "PUT", "localhost", addr, "/hello/john", []byte("john"))
 }
 
 func TestMultiParam(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.PATCH("/:group/:section", func(w http.ResponseWriter, r *http.Request) {
-			group := middleware.Param(r, "group")
-			section := middleware.Param(r, "section")
-			w.Write([]byte("page /" + group + "/" + section))
-		})
-		_ = router.ListenAndServe(":60307")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.PATCH("/:group/:section", func(w http.ResponseWriter, r *http.Request) {
+		group := middleware.Param(r, "group")
+		section := middleware.Param(r, "section")
+		w.Write([]byte("page /" + group + "/" + section))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "PATCH", "localhost", "<>:60307/account/info", []byte("page /account/info"))
+	curl(t, "PATCH", "localhost", addr, "/account/info", []byte("page /account/info"))
 }
 
 func TestMultiParamPrefix(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.DELETE("/foo/:group/:section", func(w http.ResponseWriter, r *http.Request) {
-			group := middleware.Param(r, "group")
-			section := middleware.Param(r, "section")
-			w.Write([]byte("page /foo/" + group + "/" + section))
-		})
-		_ = router.ListenAndServe(":60308")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.DELETE("/foo/:group/:section", func(w http.ResponseWriter, r *http.Request) {
+		group := middleware.Param(r, "group")
+		section := middleware.Param(r, "section")
+		w.Write([]byte("page /foo/" + group + "/" + section))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "DELETE", "localhost", "<>:60308/foo/account/info", []byte("page /foo/account/info"))
+	curl(t, "DELETE", "localhost", addr, "/foo/account/info", []byte("page /foo/account/info"))
 }
 
 func TestComplexParam(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.PUT("/account/:name/info", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(middleware.Param(r, "name")))
-		})
-		_ = router.ListenAndServe(":60312")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.PUT("/account/:name/info", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(middleware.Param(r, "name")))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "PUT", "localhost", "<>:60312/account/alice/info", []byte("alice"))
+	curl(t, "PUT", "localhost", addr, "/account/alice/info", []byte("alice"))
 }
 
 func TestServeFiles(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.STATIC(".", "/cdn")
-		_ = router.ListenAndServe(":60311")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.STATIC(".", "/cdn")
+	go srv.ListenAndServe(addr.String())
 
 	data, err := ioutil.ReadFile("LICENSE.md")
 
@@ -365,361 +346,315 @@ func TestServeFiles(t *testing.T) {
 		return
 	}
 
-	curl(t, "GET", "localhost", "<>:60311/cdn/LICENSE.md", data)
+	curl(t, "GET", "localhost", addr, "/cdn/LICENSE.md", data)
 }
 
 func TestServeFilesFake(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/updates/appcast.xml", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("<xml></xml>"))
-		})
-		_ = router.ListenAndServe(":60335")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/updates/appcast.xml", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<xml></xml>"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60335/updates/appcast.xml", []byte("<xml></xml>"))
+	curl(t, "GET", "localhost", addr, "/updates/appcast.xml", []byte("<xml></xml>"))
 }
 
 func TestServeFilesFakeScript(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/tag/js/gpt.js", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("(function(E){})"))
-		})
-		_ = router.ListenAndServe(":60336")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/tag/js/gpt.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("(function(E){})"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60336/tag/js/gpt.js", []byte("(function(E){})"))
-	curl(t, "GET", "localhost", "<>:60336/tag/js/foo.js", []byte("404 page not found\n"))
+	curl(t, "GET", "localhost", addr, "/tag/js/gpt.js", []byte("(function(E){})"))
+	curl(t, "GET", "localhost", addr, "/tag/js/foo.js", []byte("404 page not found\n"))
 }
 
 func TestTrailingSlash(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/hello/world/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60313")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/hello/world/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60313/hello/world/", []byte("Hello World"))
+	curl(t, "GET", "localhost", addr, "/hello/world/", []byte("Hello World"))
 }
 
 func TestTrailingSlashDynamic(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.POST("/api/:id/store/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("store"))
-		})
-		_ = router.ListenAndServe(":60316")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.POST("/api/:id/store/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("store"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "POST", "localhost", "<>:60316/api/123/store/", []byte("store"))
+	curl(t, "POST", "localhost", addr, "/api/123/store/", []byte("store"))
 }
 
 func TestTrailingSlashDynamicMultiple(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.POST("/api/:id/store/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("dynamic"))
-		})
-		_ = router.ListenAndServe(":60324")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.POST("/api/:id/store/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("dynamic"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "POST", "localhost", "<>:60324/api/123/////store/", []byte("dynamic"))
+	curl(t, "POST", "localhost", addr, "/api/123/////store/", []byte("dynamic"))
 }
 
 func TestMultipleRoutes(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/hello/world/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		router.GET("/lorem/ipsum/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Lorem Ipsum"))
-		})
-		_ = router.ListenAndServe(":60315")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/hello/world/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	srv.GET("/lorem/ipsum/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Lorem Ipsum"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60315/hello/world/", []byte("Hello World"))
-	curl(t, "GET", "localhost", "<>:60315/lorem/ipsum/", []byte("Lorem Ipsum"))
+	curl(t, "GET", "localhost", addr, "/hello/world/", []byte("Hello World"))
+	curl(t, "GET", "localhost", addr, "/lorem/ipsum/", []byte("Lorem Ipsum"))
 }
 
 func TestRouteWithAsterisk(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/home/users/*/ignored/sections", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("robot"))
-		})
-		_ = router.ListenAndServe(":60322")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/home/users/*/ignored/sections", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("robot"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60322/home/users/a/b/root", []byte("robot"))
+	curl(t, "GET", "localhost", addr, "/home/users/a/b/root", []byte("robot"))
 }
 
 func TestRouteWithExtraSlash(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/hello///////world", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("hello"))
-		})
-		_ = router.ListenAndServe(":60323")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/hello///////world", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60323/hello/world", []byte("hello"))
+	curl(t, "GET", "localhost", addr, "/hello/world", []byte("hello"))
 }
 
 func TestRouteWithExtraSlash2(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("///////hello/world", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("hello"))
-		})
-		_ = router.ListenAndServe(":60325")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("///////hello/world", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60325/hello/world", []byte("hello"))
+	curl(t, "GET", "localhost", addr, "/hello/world", []byte("hello"))
 }
 
 func TestMultipleDynamic(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/hello/:first/:last/info", func(w http.ResponseWriter, r *http.Request) {
-			first := middleware.Param(r, "first")
-			last := middleware.Param(r, "last")
-			w.Write([]byte("Hello " + first + " " + last))
-		})
-		_ = router.ListenAndServe(":60332")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/hello/:first/:last/info", func(w http.ResponseWriter, r *http.Request) {
+		first := middleware.Param(r, "first")
+		last := middleware.Param(r, "last")
+		w.Write([]byte("Hello " + first + " " + last))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60332/hello/john/smith/info", []byte("Hello john smith"))
+	curl(t, "GET", "localhost", addr, "/hello/john/smith/info", []byte("Hello john smith"))
 }
 
 func TestMultipleHosts(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.Host("foo.test").GET("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("@foo.test:" + middleware.Param(r, "name")))
-		})
-		router.Host("bar.test").GET("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("@bar.test:" + middleware.Param(r, "name")))
-		})
-		_ = router.ListenAndServe(":60337")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.Host("foo.test").GET("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("@foo.test:" + middleware.Param(r, "name")))
+	})
+	srv.Host("bar.test").GET("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("@bar.test:" + middleware.Param(r, "name")))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "foo.test", "<>:60337/hello/john", []byte("@foo.test:john"))
-	curl(t, "GET", "bar.test", "<>:60337/hello/alice", []byte("@bar.test:alice"))
+	curl(t, "GET", "foo.test", addr, "/hello/john", []byte("@foo.test:john"))
+	curl(t, "GET", "bar.test", addr, "/hello/alice", []byte("@bar.test:alice"))
 }
 
 func TestDefaultHost(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello " + middleware.Param(r, "name")))
-		})
-		router.Host("foo.test").GET("/world/:name", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("World " + middleware.Param(r, "name")))
-		})
-		_ = router.ListenAndServe(":60338")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/hello/:name", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello " + middleware.Param(r, "name")))
+	})
+	srv.Host("foo.test").GET("/world/:name", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("World " + middleware.Param(r, "name")))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60338/hello/john", []byte("Hello john"))
-	curl(t, "GET", "foo.test", "<>:60338/world/earth", []byte("World earth"))
-	curl(t, "GET", "bar.test", "<>:60338/anything", []byte("404 page not found\n"))
+	curl(t, "GET", "localhost", addr, "/hello/john", []byte("Hello john"))
+	curl(t, "GET", "foo.test", addr, "/world/earth", []byte("World earth"))
+	curl(t, "GET", "bar.test", addr, "/anything", []byte("404 page not found\n"))
 }
 
 func TestMethodHandle(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.Handle("HELLOWORLD", "/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60340")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.Handle("HELLOWORLD", "/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "HELLOWORLD", "localhost", "<>:60340/foobar", []byte("Hello World"))
+	curl(t, "HELLOWORLD", "localhost", addr, "/foobar", []byte("Hello World"))
 }
 
 func TestMethodCONNECT(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.CONNECT("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60341")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.CONNECT("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "CONNECT", "localhost", "<>:60341/foobar", []byte("Hello World"))
+	curl(t, "CONNECT", "localhost", addr, "/foobar", []byte("Hello World"))
 }
 
 func TestMethodTRACE(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.TRACE("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60342")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.TRACE("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "TRACE", "localhost", "<>:60342/foobar", []byte("Hello World"))
+	curl(t, "TRACE", "localhost", addr, "/foobar", []byte("Hello World"))
 }
 
 func TestMethodCOPY(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.COPY("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60343")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.COPY("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "COPY", "localhost", "<>:60343/foobar", []byte("Hello World"))
+	curl(t, "COPY", "localhost", addr, "/foobar", []byte("Hello World"))
 }
 
 func TestMethodLOCK(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.LOCK("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60344")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.LOCK("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "LOCK", "localhost", "<>:60344/foobar", []byte("Hello World"))
+	curl(t, "LOCK", "localhost", addr, "/foobar", []byte("Hello World"))
 }
 
 func TestMethodMKCOL(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.MKCOL("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60345")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.MKCOL("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "MKCOL", "localhost", "<>:60345/foobar", []byte("Hello World"))
+	curl(t, "MKCOL", "localhost", addr, "/foobar", []byte("Hello World"))
 }
 
 func TestMethodMOVE(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.MOVE("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60346")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.MOVE("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "MOVE", "localhost", "<>:60346/foobar", []byte("Hello World"))
+	curl(t, "MOVE", "localhost", addr, "/foobar", []byte("Hello World"))
 }
 
 func TestMethodPROPFIND(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.PROPFIND("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60347")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.PROPFIND("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "PROPFIND", "localhost", "<>:60347/foobar", []byte("Hello World"))
+	curl(t, "PROPFIND", "localhost", addr, "/foobar", []byte("Hello World"))
 }
 
 func TestMethodPROPPATCH(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.PROPPATCH("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60348")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.PROPPATCH("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "PROPPATCH", "localhost", "<>:60348/foobar", []byte("Hello World"))
+	curl(t, "PROPPATCH", "localhost", addr, "/foobar", []byte("Hello World"))
 }
 
 func TestMethodUNLOCK(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.UNLOCK("/foobar", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60349")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.UNLOCK("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "UNLOCK", "localhost", "<>:60349/foobar", []byte("Hello World"))
+	curl(t, "UNLOCK", "localhost", addr, "/foobar", []byte("Hello World"))
 }
 
 func TestEndpointOrder(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/*", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("endpoint #7"))
-		})
-		router.GET("/help/:group/:question/*", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("endpoint #6"))
-		})
-		router.GET("/usr/local/:group/:package/*", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("endpoint #5"))
-		})
-		router.GET("/user/:userid", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("endpoint #4"))
-		})
-		router.GET("/auth/:sso", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("endpoint #3"))
-		})
-		router.GET("/blog/:name/slug", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("endpoint #2"))
-		})
-		router.GET("/help/:page/:group/comments", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("endpoint #1"))
-		})
-		_ = router.ListenAndServe(":60326")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/*", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("endpoint #7"))
+	})
+	srv.GET("/help/:group/:question/*", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("endpoint #6"))
+	})
+	srv.GET("/usr/local/:group/:package/*", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("endpoint #5"))
+	})
+	srv.GET("/user/:userid", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("endpoint #4"))
+	})
+	srv.GET("/auth/:sso", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("endpoint #3"))
+	})
+	srv.GET("/blog/:name/slug", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("endpoint #2"))
+	})
+	srv.GET("/help/:page/:group/comments", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("endpoint #1"))
+	})
+	go srv.ListenAndServe(addr.String())
 
 	inputs := [][]string{
 		{"test_0", "/help/viva/family/comments", "endpoint #1"},
@@ -736,63 +671,57 @@ func TestEndpointOrder(t *testing.T) {
 
 	for _, input := range inputs {
 		t.Run(input[0], func(t *testing.T) {
-			curl(t, "GET", "localhost", "<>:60326"+input[1], []byte(input[2]))
+			curl(t, "GET", "localhost", addr, ""+input[1], []byte(input[2]))
 		})
 	}
 }
 
 func TestAmbiguousPath(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/:package", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("package"))
-		})
-		router.GET("/:package/-/:archive", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("package/archive"))
-		})
-		_ = router.ListenAndServe(":60350")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/:package", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("package"))
+	})
+	srv.GET("/:package/-/:archive", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("package/archive"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60350/foobar", []byte("package"))
-	curl(t, "GET", "localhost", "<>:60350/foobar/-/foobar.tgz", []byte("package/archive"))
+	curl(t, "GET", "localhost", addr, "/foobar", []byte("package"))
+	curl(t, "GET", "localhost", addr, "/foobar/-/foobar.tgz", []byte("package/archive"))
 }
 
 func TestAmbiguousPath2(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/:package", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("package"))
-		})
-		router.GET("/:module/:package", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("module/package"))
-		})
-		router.GET("/:package/-/:archive", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("package/archive"))
-		})
-		_ = router.ListenAndServe(":60351")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/:package", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("package"))
+	})
+	srv.GET("/:module/:package", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("module/package"))
+	})
+	srv.GET("/:package/-/:archive", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("package/archive"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60351/foobar", []byte("package"))
-	curl(t, "GET", "localhost", "<>:60351/@babel/core", []byte("module/package"))
-	curl(t, "GET", "localhost", "<>:60351/foobar/-/foobar.tgz", []byte("package/archive"))
+	curl(t, "GET", "localhost", addr, "/foobar", []byte("package"))
+	curl(t, "GET", "localhost", addr, "/@babel/core", []byte("module/package"))
+	curl(t, "GET", "localhost", addr, "/foobar/-/foobar.tgz", []byte("package/archive"))
 }
 
 func TestAmbiguousPath3(t *testing.T) {
-	go func() {
-		router := middleware.New()
-		router.DiscardLogs()
-		defer router.Shutdown()
-		router.GET("/usr/local/:group/:user/*", func(w http.ResponseWriter, r *http.Request) {
-			group := middleware.Param(r, "group")
-			user := middleware.Param(r, "user")
-			w.Write([]byte(group + ":" + user))
-		})
-		_ = router.ListenAndServe(":60327")
-	}()
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/usr/local/:group/:user/*", func(w http.ResponseWriter, r *http.Request) {
+		group := middleware.Param(r, "group")
+		user := middleware.Param(r, "user")
+		w.Write([]byte(group + ":" + user))
+	})
+	go srv.ListenAndServe(addr.String())
 
 	inputs := [][]string{
 		{"should not exist 1", "/usr/local", "404 page not found\n"},
@@ -803,7 +732,7 @@ func TestAmbiguousPath3(t *testing.T) {
 
 	for _, input := range inputs {
 		t.Run(input[0], func(t *testing.T) {
-			curl(t, "GET", "localhost", "<>:60327"+input[1], []byte(input[2]))
+			curl(t, "GET", "localhost", addr, ""+input[1], []byte(input[2]))
 		})
 	}
 }
@@ -823,19 +752,16 @@ func (t *telemetry) Log(data middleware.AccessLog) {
 }
 
 func TestResponseCallback(t *testing.T) {
+	srv, addr := newTestServer(t)
 	tracer := &telemetry{}
+	srv.Logger = tracer
+	defer srv.Shutdown()
+	srv.GET("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	go srv.ListenAndServe(addr.String())
 
-	go func() {
-		router := middleware.New()
-		router.Logger = tracer
-		defer router.Shutdown()
-		router.GET("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello World"))
-		})
-		_ = router.ListenAndServe(":60339")
-	}()
-
-	curl(t, "GET", "localhost", "<>:60339/?hello=world&foo=bar", []byte("Hello World"))
+	curl(t, "GET", "localhost", addr, "/?hello=world&foo=bar", []byte("Hello World"))
 
 	if !tracer.called {
 		t.Fatal("http tracer was not called")
@@ -887,15 +813,17 @@ func TestResponseCallback(t *testing.T) {
 }
 
 func TestShutdown(t *testing.T) {
-	router := middleware.New()
-	router.DiscardLogs()
-	router.GET("/s", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("xyz")) })
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	srv.GET("/s", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("xyz")) })
 
-	go router.ListenAndServe(":60309")
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60309/s", []byte("xyz"))
-	router.Shutdown()
-	shouldNotCurl(t, "GET", "localhost", "http://localhost:60309/s")
+	curl(t, "GET", "localhost", addr, "/s", []byte("xyz"))
+
+	srv.Shutdown()
+
+	shouldNotCurl(t, "GET", "localhost", addr, "/s")
 }
 
 type CustomSignal int
@@ -905,28 +833,29 @@ func (CustomSignal) Signal() {}
 func (CustomSignal) String() string { return "custom signal" }
 
 func TestShutdownWithChannel(t *testing.T) {
+	srv, addr := newTestServer(t)
+
 	done := false
 	quit := make(chan os.Signal, 1)
 	next := make(chan bool, 1)
 
-	router := middleware.New()
-	router.DiscardLogs()
-	router.GET("/swc", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("abc")) })
+	srv.DiscardLogs()
+	srv.GET("/swc", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("abc")) })
 
 	go func() {
 		<-quit
-		router.Shutdown()
+		srv.Shutdown()
 		next <- true
 		done = true
 	}()
 
-	go router.ListenAndServe(":60310")
+	go srv.ListenAndServe(addr.String())
 
-	curl(t, "GET", "localhost", "<>:60310/swc", []byte("abc"))
+	curl(t, "GET", "localhost", addr, "/swc", []byte("abc"))
 	quit <- CustomSignal(60310) // Call middleware.Shutdown to stop the server.
 
 	<-next // Wait for middleware.Shutdown to finish.
-	shouldNotCurl(t, "GET", "localhost", "http://localhost:60310/swc")
+	shouldNotCurl(t, "GET", "localhost", addr, "/swc")
 
 	if !done {
 		t.Fatal("goroutine with middleware.Shutdown did not run correctly")
@@ -934,18 +863,17 @@ func TestShutdownWithChannel(t *testing.T) {
 }
 
 func TestShutdownAddon(t *testing.T) {
+	srv, addr := newTestServer(t)
 	done := false
+	srv.DiscardLogs()
+	srv.OnShutdown = func() { done = true }
+	srv.GET("/s", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("XD")) })
 
-	router := middleware.New()
-	router.DiscardLogs()
-	router.OnShutdown = func() { done = true }
-	router.GET("/s", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("XD")) })
+	go srv.ListenAndServe(addr.String())
 
-	go router.ListenAndServe(":60320")
-
-	curl(t, "GET", "localhost", "<>:60320/s", []byte("XD"))
-	router.Shutdown()
-	shouldNotCurl(t, "GET", "localhost", "http://localhost:60320/s")
+	curl(t, "GET", "localhost", addr, "/s", []byte("XD"))
+	srv.Shutdown()
+	shouldNotCurl(t, "GET", "localhost", addr, "/s")
 
 	if !done {
 		t.Fatal("middleware.OnShutdown function did not run")
@@ -1022,16 +950,13 @@ func (l *LoggerAndNewLines) Log(data middleware.AccessLog) {
 }
 
 func TestLoggerAndNewLines(t *testing.T) {
+	srv, addr := newTestServer(t)
 	logger := &LoggerAndNewLines{}
+	srv.Logger = logger
+	defer srv.Shutdown()
+	go srv.ListenAndServe(addr.String())
 
-	go func() {
-		router := middleware.New()
-		router.Logger = logger
-		defer router.Shutdown()
-		router.ListenAndServe(":60321")
-	}()
-
-	curl(t, "GET", "localhost", "<>:60321/foo%0abar", []byte("Method Not Allowed\n"))
+	curl(t, "GET", "localhost", addr, "/foo%0abar", []byte("Method Not Allowed\n"))
 
 	expected := `"GET /foo\nbar HTTP/1.1"`
 
