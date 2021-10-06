@@ -39,6 +39,22 @@ func curl(t *testing.T, method string, host string, addr net.Addr, endpoint stri
 
 	req.Host = host
 
+	// It looks like the TCP resolver that Middleware leverages to obtain a
+	// random free port delays the execution of the server listener long enough
+	// for this function to randomly fail 36.95% of the time when the tests run
+	// all at the same time.
+	//
+	// I managed to fix this by delaying the execution of the HTTP request a
+	// couple of milliseconds. A rudimentary benchmark with 10 iterations as a
+	// warmup returns the following results:
+	//
+	//   > Benchmark 1: go test
+	//   >   Time (mean ± σ):     949.3 ms ±  19.5 ms    [User: 722.2 ms, System: 467.7 ms]
+	//   >   Range (min … max):   904.9 ms … 968.8 ms    10 runs
+	//
+	// TODO: find a way to execute all the tests without the 2ms cURL delay.
+	time.Sleep(time.Millisecond * 2)
+
 	res, err := http.DefaultClient.Do(req)
 
 	if err != nil {
