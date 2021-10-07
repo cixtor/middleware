@@ -185,11 +185,6 @@ func New() *Middleware {
 	return m
 }
 
-// DiscardLogs writes all the logs to `/dev/null`.
-func (m *Middleware) DiscardLogs() {
-	m.Logger = &emptyLogger{}
-}
-
 // compose follows the HTTP handler chain to execute additional middlewares.
 func compose(f, g func(http.Handler) http.Handler) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
