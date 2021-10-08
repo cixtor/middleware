@@ -1,40 +1,64 @@
 package middleware
 
+import (
+	"strings"
+)
+
 type trie struct {
-	children  map[rune]*trie
-	endOfWord bool
+	root *trieNode
 }
 
 func newTrie() *trie {
 	return &trie{
-		children: make(map[rune]*trie),
+		root: newTrieNode(),
 	}
 }
 
-func (t *trie) Insert(word string) {
-	curr := t
+type trieNode struct {
+	children  map[string]*trieNode
+	endOfWord bool
+}
 
-	for _, c := range word {
-		if curr.children[c] == nil {
-			curr.children[c] = newTrie()
+func newTrieNode() *trieNode {
+	return &trieNode{
+		children: make(map[string]*trieNode),
+	}
+}
+
+func (t *trie) Insert(urlPath string) {
+	node := t.root
+	folders := strings.Split(urlPath, sep)
+
+	for _, folder := range folders {
+		if folder == "" {
+			continue
 		}
 
-		curr = curr.children[c]
+		if _, ok := node.children[folder]; !ok {
+			node.children[folder] = newTrieNode()
+		}
+
+		node = node.children[folder]
 	}
 
-	curr.endOfWord = true
+	node.endOfWord = true
 }
 
-func (t *trie) Search(word string) bool {
-	curr := t
+func (t *trie) Search(urlPath string) bool {
+	node := t.root
+	folders := strings.Split(urlPath, sep)
 
-	for _, c := range word {
-		if curr.children[c] == nil {
+	for _, folder := range folders {
+		if folder == "" {
+			continue
+		}
+
+		if _, ok := node.children[folder]; !ok {
 			return false
 		}
 
-		curr = curr.children[c]
+		node = node.children[folder]
 	}
 
-	return curr.endOfWord
+	return node.endOfWord
 }
