@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-func TestBasicTrie(t *testing.T) {
-	root := newTrie()
+func TestTrieBasic(t *testing.T) {
+	root := newPrivTrie()
 
 	root.Insert("/")
 	root.Insert("/hello")

@@ -1,64 +1,38 @@
 package middleware
 
-import (
-	"strings"
-)
-
-type trie struct {
-	root *trieNode
+type privTrie struct {
+	root *privTrieNode
 }
 
-func newTrie() *trie {
-	return &trie{
-		root: newTrieNode(),
-	}
+type privTrieNode struct {
+	children [128]*privTrieNode
+	isTheEnd bool
 }
 
-type trieNode struct {
-	children  map[string]*trieNode
-	endOfWord bool
+func newPrivTrie() *privTrie {
+	return &privTrie{root: &privTrieNode{}}
 }
 
-func newTrieNode() *trieNode {
-	return &trieNode{
-		children: make(map[string]*trieNode),
-	}
-}
-
-func (t *trie) Insert(urlPath string) {
+func (t *privTrie) Insert(endpoint string) {
 	node := t.root
-	folders := strings.Split(urlPath, sep)
-
-	for _, folder := range folders {
-		if folder == "" {
-			continue
+	for i := 0; i < len(endpoint); i++ {
+		charIndex := endpoint[i]
+		if node.children[charIndex] == nil {
+			node.children[charIndex] = &privTrieNode{}
 		}
-
-		if _, ok := node.children[folder]; !ok {
-			node.children[folder] = newTrieNode()
-		}
-
-		node = node.children[folder]
+		node = node.children[charIndex]
 	}
-
-	node.endOfWord = true
+	node.isTheEnd = true
 }
 
-func (t *trie) Search(urlPath string) bool {
+func (t *privTrie) Search(endpoint string) bool {
 	node := t.root
-	folders := strings.Split(urlPath, sep)
-
-	for _, folder := range folders {
-		if folder == "" {
-			continue
-		}
-
-		if _, ok := node.children[folder]; !ok {
+	for i := 0; i < len(endpoint); i++ {
+		charIndex := endpoint[i]
+		if node.children[charIndex] == nil {
 			return false
 		}
-
-		node = node.children[folder]
+		node = node.children[charIndex]
 	}
-
-	return node.endOfWord
+	return node.isTheEnd
 }
