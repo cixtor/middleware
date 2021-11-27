@@ -1,11 +1,20 @@
 package middleware
 
+// nps stands for Named Parameter Symbol.
+//
+// Example:
+//
+//	/lorem/ipsum/:dolor/sit/amet
+//	             ^^^^^^ this is a NPS
+var nps byte = ':'
+
 type privTrie struct {
 	root *privTrieNode
 }
 
 type privTrieNode struct {
 	children map[byte]*privTrieNode
+	paramKey string
 	isTheEnd bool
 }
 
@@ -19,12 +28,24 @@ func newPrivTrieNode() *privTrieNode {
 
 func (t *privTrie) Insert(endpoint string) {
 	node := t.root
-	for i := 0; i < len(endpoint); i++ {
-		charIndex := endpoint[i]
-		if node.children[charIndex] == nil {
-			node.children[charIndex] = newPrivTrieNode()
+	total := len(endpoint)
+	for i := 0; i < total; i++ {
+		char := endpoint[i]
+		param := []byte{}
+		if char == nps {
+			for j := i + 1; j < total; j++ {
+				if endpoint[j:j+1] == sep {
+					break
+				}
+				param = append(param, endpoint[j])
+			}
+			i += len(param)
 		}
-		node = node.children[charIndex]
+		if node.children[char] == nil {
+			node.children[char] = newPrivTrieNode()
+			node.children[char].paramKey = string(param)
+		}
+		node = node.children[char]
 	}
 	node.isTheEnd = true
 }
@@ -33,22 +54,32 @@ func (t *privTrie) Search(endpoint string) bool {
 	node := t.root
 	total := len(endpoint)
 	for i := 0; i < total; i++ {
-		charIndex := endpoint[i]
-		if charIndex == nps[0] {
-			for i < total && endpoint[i:i+1] != sep {
-				// Ignore the remaining part of the endpoint string.
-				i++
-			}
-			if i == total {
-				// Continue searching the remaining part of the trie.
-				break
-			}
-			charIndex = endpoint[i]
+		char := endpoint[i]
+		// If the character we are evaluating in the URL path exists under this
+		// specific node. If yes, it may be possible to continue down the tree
+		// with the assumption that there is a valid static endpoint. Move to
+		// the next node to verify.
+		if node.children[char] != nil {
+			node = node.children[char]
+			continue
 		}
-		if node.children[charIndex] == nil {
-			return false
+		// If the character does not exists under the node but a colon does,
+		// then assume that we have a dynamic URL segment. Read the text until
+		// the next forward slash and use it as the parameter value.
+		if node.children[nps] != nil {
+			value := []byte{}
+			for j := i; j < total; j++ {
+				if endpoint[j:j+1] == sep {
+					break
+				}
+				value = append(value, endpoint[j])
+			}
+			i += len(value) - 1
+			node = node.children[nps]
+			continue
 		}
-		node = node.children[charIndex]
+		// At this point, it is safe to say the URL path is not defined.
+		return false
 	}
 	return node.isTheEnd
 }
