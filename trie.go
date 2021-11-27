@@ -50,36 +50,75 @@ func (t *privTrie) Insert(endpoint string) {
 	node.isTheEnd = true
 }
 
-func (t *privTrie) Search(endpoint string) bool {
+func (t *privTrie) Search(endpoint string) (bool, map[string]string) {
 	node := t.root
 	total := len(endpoint)
+	params := map[string]string{}
+
 	for i := 0; i < total; i++ {
 		char := endpoint[i]
+
 		// If the character we are evaluating in the URL path exists under this
 		// specific node. If yes, it may be possible to continue down the tree
 		// with the assumption that there is a valid static endpoint. Move to
 		// the next node to verify.
+		//
+		// For example, consider these two routes:
+		//
+		//   A. /lorem/ipsum/:page/sit/amet
+		//   B. /lorem/ipsum/dolor/sit/amet
+		//
+		// And these two requests:
+		//
+		//   1. /lorem/ipsum/dolor/sit/amet
+		//   2. /lorem/ipsum/maker/sit/amet
+		//
+		// Request [1] perfectly matches the route [A], but there is another,
+		// more specific, route defined as [B] that also matches the endpoint.
+		// For the sake of precision, the algorithm considers exact matches
+		// first before checking for parameterized URL segments.
+		//
+		// Request [2], however, does not match route [B] but matches route [A]
+		// and that is the one the algorithm selects to continue checking for
+		// the other URL segments.
 		if node.children[char] != nil {
 			node = node.children[char]
 			continue
 		}
-		// If the character does not exists under the node but a colon does,
-		// then assume that we have a dynamic URL segment. Read the text until
-		// the next forward slash and use it as the parameter value.
+
+		// Check if there is a parameterized URL segment under this node.
 		if node.children[nps] != nil {
-			value := []byte{}
-			for j := i; j < total; j++ {
-				if endpoint[j:j+1] == sep {
-					break
-				}
-				value = append(value, endpoint[j])
+			j := i
+			for ; j < total && endpoint[j] != sep[0]; j++ {
+				// Consume all characters between the colon and the next slash.
+				//
+				// For example, if a route is defined as:
+				//
+				//   A. /lorem/ipsum/:page/sit/amet
+				//
+				// And the endpoint we are searching is:
+				//
+				//   1. /lorem/ipsum/some-page-name/sit/amet
+				//
+				// Then, the for loop is supposed to consume all these letters:
+				//
+				//   1. /lorem/ipsum/some-page-name/sit/amet
+				//                   ^^^^^^^^^^^^^^
+				//
+				// Then, the function stores the consumed characters inside the
+				// params variable as "page=some-page-name". Finally, it moves
+				// the cursor N positions to the right, where N is the number
+				// of characters in the parameter value.
 			}
+			value := endpoint[i:j]
 			i += len(value) - 1
+			params[node.children[nps].paramKey] = value
 			node = node.children[nps]
 			continue
 		}
-		// At this point, it is safe to say the URL path is not defined.
-		return false
+
+		return false, nil
 	}
-	return node.isTheEnd
+
+	return node.isTheEnd, params
 }

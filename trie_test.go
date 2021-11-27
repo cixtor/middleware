@@ -45,7 +45,7 @@ func TestTrieBasic(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.query, func(t *testing.T) {
-			if root.Search(tc.query) != tc.found {
+			if wasFound, _ := root.Search(tc.query); wasFound != tc.found {
 				t.Fatalf("searching for %s should return %#v", tc.query, tc.found)
 			}
 		})
