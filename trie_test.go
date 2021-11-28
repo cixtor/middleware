@@ -71,6 +71,16 @@ func TestTrieWithNamedParameters(t *testing.T) {
 	root.Insert("/user/settings/:pageid/success")
 	root.Insert("/user/orders")
 	root.Insert("/user/orders/:orderid")
+	root.Insert("/hello/world/how/are/you/doing")
+	root.Insert("/hello/world/my/name/is/:name")
+	root.Insert("/hello/world")
+	root.Insert("/hello/world/:company")
+	root.Insert("/foo/bar")
+	root.Insert("/something/interesting/to/render")
+	root.Insert("/something/interesting/for/everyone")
+	root.Insert("/users/:id")
+	root.Insert("/articles/:slug/comments/:id")
+	root.Insert("/books/:isbn/chapters/:chapterNumber/pages/:pageNumber")
 
 	testCases := []struct {
 		found   bool
@@ -109,15 +119,46 @@ func TestTrieWithNamedParameters(t *testing.T) {
 		{found: false, webpage: "/user/orders/"},
 		{found: true, webpage: "/user/orders/order-1", params: map[string]string{"orderid": "order-1"}},
 		{found: false, webpage: "/user/orders/order-1/foobar"},
+		// users
+		{found: false, webpage: "/users/123/hello"},
+		{found: false, webpage: "/users/123/"},
+		{found: true, webpage: "/users/123", params: map[string]string{"id": "123"}},
+		{found: false, webpage: "/users/"},
+		{found: false, webpage: "/users"},
+		// articles
+		{found: false, webpage: "/articles/my-article/comments/456/hello"},
+		{found: false, webpage: "/articles/my-article/comments/456/"},
+		{found: true, webpage: "/articles/my-article/comments/456", params: map[string]string{"slug": "my-article", "id": "456"}},
+		{found: false, webpage: "/articles/my-article/comments/"},
+		{found: false, webpage: "/articles/my-article/comments"},
+		{found: false, webpage: "/articles/my-article/"},
+		{found: false, webpage: "/articles/my-article"},
+		{found: false, webpage: "/articles/"},
+		{found: false, webpage: "/articles"},
+		// books
+		{found: false, webpage: "/books/978-0547928227/chapters/3/pages/42/hello"},
+		{found: false, webpage: "/books/978-0547928227/chapters/3/pages/42/"},
+		{found: true, webpage: "/books/978-0547928227/chapters/3/pages/42", params: map[string]string{"isbn": "978-0547928227", "chapterNumber": "3", "pageNumber": "42"}},
+		{found: false, webpage: "/books/978-0547928227/chapters/3/pages/"},
+		{found: false, webpage: "/books/978-0547928227/chapters/3/pages"},
+		{found: false, webpage: "/books/978-0547928227/chapters/3/"},
+		{found: false, webpage: "/books/978-0547928227/chapters/3"},
+		{found: false, webpage: "/books/978-0547928227/chapters/"},
+		{found: false, webpage: "/books/978-0547928227/chapters"},
+		{found: false, webpage: "/books/978-0547928227/"},
+		{found: false, webpage: "/books/978-0547928227"},
+		{found: false, webpage: "/books/"},
+		{found: false, webpage: "/books"},
 	}
+
 	for _, tc := range testCases {
 		t.Run(tc.webpage, func(t *testing.T) {
 			wasFound, params := root.Search(tc.webpage)
 			if wasFound != tc.found {
-				t.Fatalf("searching for %s should return %#v", tc.webpage, tc.found)
+				t.Fatalf("searching for %q should return %#v", tc.webpage, tc.found)
 			}
 			if tc.found && !reflect.DeepEqual(params, tc.params) {
-				t.Errorf("Search(%q) returned %#v, expected %#v", tc.webpage, params, tc.params)
+				t.Fatalf("searching for %q\n- %#v\n+ %#v", tc.webpage, params, tc.params)
 			}
 		})
 	}
