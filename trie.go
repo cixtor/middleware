@@ -37,7 +37,7 @@ func (t *privTrie) Insert(endpoint string, fn http.Handler) {
 	for i := 0; i < total; i++ {
 		char := endpoint[i]
 		param := []byte{}
-		if char == nps {
+		if char == nps && endpoint[i-1:i] == sep {
 			for j := i + 1; j < total; j++ {
 				if endpoint[j:j+1] == sep {
 					break

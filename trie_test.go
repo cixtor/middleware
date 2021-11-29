@@ -163,3 +163,31 @@ func TestTrieWithNamedParameters(t *testing.T) {
 		})
 	}
 }
+
+func TestTrieAmbiguousParameter(t *testing.T) {
+	root := newPrivTrie()
+
+	root.Insert("/", nil)
+	root.Insert("/user/user:name/profile", nil)
+
+	testCases := []struct {
+		found   bool
+		webpage string
+		params  map[string]string
+	}{
+		{found: true, webpage: "/user/user:name/profile", params: map[string]string{}},
+		{found: false, webpage: "/user/johnsmith/profile"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.webpage, func(t *testing.T) {
+			wasFound, _, params := root.Search(tc.webpage)
+			if wasFound != tc.found {
+				t.Fatalf("searching for %q should return %#v", tc.webpage, tc.found)
+			}
+			if tc.found && !reflect.DeepEqual(params, tc.params) {
+				t.Fatalf("searching for %q\n- %#v\n+ %#v", tc.webpage, params, tc.params)
+			}
+		})
+	}
+}
