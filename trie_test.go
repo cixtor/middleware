@@ -8,12 +8,12 @@ import (
 func TestTrieBasic(t *testing.T) {
 	root := newPrivTrie()
 
-	root.Insert("/")
-	root.Insert("/hello")
-	root.Insert("/hello/world")
-	root.Insert("/hello/world/how")
-	root.Insert("/hello/world/how/are")
-	root.Insert("/hello/world/how/are/you")
+	root.Insert("/", nil)
+	root.Insert("/hello", nil)
+	root.Insert("/hello/world", nil)
+	root.Insert("/hello/world/how", nil)
+	root.Insert("/hello/world/how/are", nil)
+	root.Insert("/hello/world/how/are/you", nil)
 
 	testCases := []struct {
 		found bool
@@ -46,7 +46,7 @@ func TestTrieBasic(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.query, func(t *testing.T) {
-			if wasFound, _ := root.Search(tc.query); wasFound != tc.found {
+			if wasFound, _, _ := root.Search(tc.query); wasFound != tc.found {
 				t.Fatalf("searching for %s should return %#v", tc.query, tc.found)
 			}
 		})
@@ -56,31 +56,31 @@ func TestTrieBasic(t *testing.T) {
 func TestTrieWithNamedParameters(t *testing.T) {
 	root := newPrivTrie()
 
-	root.Insert("/")
-	root.Insert("/home")
-	root.Insert("/about")
-	root.Insert("/contact-us")
-	root.Insert("/blog")
-	root.Insert("/blog/:postid")
-	root.Insert("/products")
-	root.Insert("/products/:itemid")
-	root.Insert("/login")
-	root.Insert("/register")
-	root.Insert("/user/:username/profile")
-	root.Insert("/user/settings")
-	root.Insert("/user/settings/:pageid/success")
-	root.Insert("/user/orders")
-	root.Insert("/user/orders/:orderid")
-	root.Insert("/hello/world/how/are/you/doing")
-	root.Insert("/hello/world/my/name/is/:name")
-	root.Insert("/hello/world")
-	root.Insert("/hello/world/:company")
-	root.Insert("/foo/bar")
-	root.Insert("/something/interesting/to/render")
-	root.Insert("/something/interesting/for/everyone")
-	root.Insert("/users/:id")
-	root.Insert("/articles/:slug/comments/:id")
-	root.Insert("/books/:isbn/chapters/:chapterNumber/pages/:pageNumber")
+	root.Insert("/", nil)
+	root.Insert("/home", nil)
+	root.Insert("/about", nil)
+	root.Insert("/contact-us", nil)
+	root.Insert("/blog", nil)
+	root.Insert("/blog/:postid", nil)
+	root.Insert("/products", nil)
+	root.Insert("/products/:itemid", nil)
+	root.Insert("/login", nil)
+	root.Insert("/register", nil)
+	root.Insert("/user/:username/profile", nil)
+	root.Insert("/user/settings", nil)
+	root.Insert("/user/settings/:pageid/success", nil)
+	root.Insert("/user/orders", nil)
+	root.Insert("/user/orders/:orderid", nil)
+	root.Insert("/hello/world/how/are/you/doing", nil)
+	root.Insert("/hello/world/my/name/is/:name", nil)
+	root.Insert("/hello/world", nil)
+	root.Insert("/hello/world/:company", nil)
+	root.Insert("/foo/bar", nil)
+	root.Insert("/something/interesting/to/render", nil)
+	root.Insert("/something/interesting/for/everyone", nil)
+	root.Insert("/users/:id", nil)
+	root.Insert("/articles/:slug/comments/:id", nil)
+	root.Insert("/books/:isbn/chapters/:chapterNumber/pages/:pageNumber", nil)
 
 	testCases := []struct {
 		found   bool
@@ -153,7 +153,7 @@ func TestTrieWithNamedParameters(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.webpage, func(t *testing.T) {
-			wasFound, params := root.Search(tc.webpage)
+			wasFound, _, params := root.Search(tc.webpage)
 			if wasFound != tc.found {
 				t.Fatalf("searching for %q should return %#v", tc.webpage, tc.found)
 			}

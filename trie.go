@@ -1,5 +1,9 @@
 package middleware
 
+import (
+	"net/http"
+)
+
 // nps stands for Named Parameter Symbol.
 //
 // Example:
@@ -13,9 +17,10 @@ type privTrie struct {
 }
 
 type privTrieNode struct {
-	children map[byte]*privTrieNode
-	paramKey string
-	isTheEnd bool
+	children  map[byte]*privTrieNode
+	parameter string
+	isTheEnd  bool
+	handler   http.Handler
 }
 
 func newPrivTrie() *privTrie {
@@ -26,7 +31,7 @@ func newPrivTrieNode() *privTrieNode {
 	return &privTrieNode{children: make(map[byte]*privTrieNode)}
 }
 
-func (t *privTrie) Insert(endpoint string) {
+func (t *privTrie) Insert(endpoint string, fn http.Handler) {
 	node := t.root
 	total := len(endpoint)
 	for i := 0; i < total; i++ {
@@ -43,14 +48,15 @@ func (t *privTrie) Insert(endpoint string) {
 		}
 		if node.children[char] == nil {
 			node.children[char] = newPrivTrieNode()
-			node.children[char].paramKey = string(param)
+			node.children[char].parameter = string(param)
 		}
 		node = node.children[char]
 	}
 	node.isTheEnd = true
+	node.handler = fn
 }
 
-func (t *privTrie) Search(endpoint string) (bool, map[string]string) {
+func (t *privTrie) Search(endpoint string) (bool, http.Handler, map[string]string) {
 	node := t.root
 	total := len(endpoint)
 	params := map[string]string{}
@@ -112,13 +118,13 @@ func (t *privTrie) Search(endpoint string) (bool, map[string]string) {
 			}
 			value := endpoint[i:j]
 			i += len(value) - 1
-			params[node.children[nps].paramKey] = value
+			params[node.children[nps].parameter] = value
 			node = node.children[nps]
 			continue
 		}
 
-		return false, nil
+		return false, nil, nil
 	}
 
-	return node.isTheEnd, params
+	return node.isTheEnd, node.handler, params
 }
