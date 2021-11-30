@@ -36,19 +36,20 @@ func (t *privTrie) Insert(endpoint string, fn http.Handler) {
 	total := len(endpoint)
 	for i := 0; i < total; i++ {
 		char := endpoint[i]
-		param := []byte{}
+		param := ""
 		if char == nps && endpoint[i-1:i] == sep {
-			for j := i + 1; j < total; j++ {
-				if endpoint[j:j+1] == sep {
-					break
-				}
-				param = append(param, endpoint[j])
+			j := i + 1
+			for ; j < total && endpoint[j] != sep[0]; j++ {
+				// Consume all characters that follow a colon until we find the
+				// next forward slash or the end of the endpoint. Then, select
+				// those characters and use them as the parameter name.
 			}
+			param = endpoint[i+1 : j]
 			i += len(param)
 		}
 		if node.children[char] == nil {
 			node.children[char] = newPrivTrieNode()
-			node.children[char].parameter = string(param)
+			node.children[char].parameter = param
 		}
 		node = node.children[char]
 	}
