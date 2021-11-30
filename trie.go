@@ -12,6 +12,8 @@ import (
 //	             ^^^^^^ this is a NPS
 var nps byte = ':'
 
+var all byte = '*'
+
 type privTrie struct {
 	root *privTrieNode
 }
@@ -37,7 +39,7 @@ func (t *privTrie) Insert(endpoint string, fn http.Handler) {
 	for i := 0; i < total; i++ {
 		char := endpoint[i]
 		param := ""
-		if char == nps && endpoint[i-1:i] == sep {
+		if char == nps && endpoint[i-1] == sep[0] {
 			j := i + 1
 			for ; j < total && endpoint[j] != sep[0]; j++ {
 				// Consume all characters that follow a colon until we find the
@@ -48,10 +50,20 @@ func (t *privTrie) Insert(endpoint string, fn http.Handler) {
 			i += len(param)
 		}
 		if node.children[char] == nil {
+			// Initialize a trie for this specific character.
 			node.children[char] = newPrivTrieNode()
+		}
+		if param != "" {
+			// Write the parameter name, if available.
 			node.children[char].parameter = param
 		}
 		node = node.children[char]
+		if char == all && endpoint[i-1] == sep[0] {
+			// If the character is an asterisk and the previous character is a
+			// URL separator, commonly a forward slash, then stop inserting new
+			// nodes and mark this character the end of the URL.
+			break
+		}
 	}
 	node.isTheEnd = true
 	node.handler = fn
@@ -122,6 +134,11 @@ func (t *privTrie) Search(endpoint string) (bool, http.Handler, map[string]strin
 			params[node.children[nps].parameter] = value
 			node = node.children[nps]
 			continue
+		}
+
+		if node.children[all] != nil {
+			node = node.children[all]
+			break
 		}
 
 		return false, nil, nil

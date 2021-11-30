@@ -191,3 +191,56 @@ func TestTrieAmbiguousParameter(t *testing.T) {
 		})
 	}
 }
+
+func TestTrieWithAsterisk(t *testing.T) {
+	root := newPrivTrie()
+
+	root.Insert("/", nil)
+	root.Insert("/home", nil)
+	root.Insert("/about", nil)
+	root.Insert("/blog/:article", nil)
+	root.Insert("/images/*", nil)
+	root.Insert("/noindex/documents/*", nil)
+	root.Insert("/cookies/are*delicious", nil)
+
+	testCases := []struct {
+		found   bool
+		webpage string
+		params  map[string]string
+	}{
+		{found: true, webpage: "/", params: map[string]string{}},
+		{found: false, webpage: "/notfound"},
+		{found: true, webpage: "/home", params: map[string]string{}},
+		{found: true, webpage: "/about", params: map[string]string{}},
+		{found: false, webpage: "/contact-us"},
+		{found: true, webpage: "/blog/post-1", params: map[string]string{"article": "post-1"}},
+		{found: true, webpage: "/blog/post-2", params: map[string]string{"article": "post-2"}},
+		{found: true, webpage: "/blog/post-3", params: map[string]string{"article": "post-3"}},
+		{found: false, webpage: "/images"},
+		{found: false, webpage: "/images/"},
+		{found: true, webpage: "/images/image-1.jpg", params: map[string]string{}},
+		{found: true, webpage: "/images/image-2.png", params: map[string]string{}},
+		{found: true, webpage: "/images/image-3.gif", params: map[string]string{}},
+		{found: true, webpage: "/images/jpg/image-1.jpg", params: map[string]string{}},
+		{found: true, webpage: "/images/png/image-2.png", params: map[string]string{}},
+		{found: true, webpage: "/images/gif/image-3.gif", params: map[string]string{}},
+		{found: true, webpage: "/images/sub1/image-1.jpg", params: map[string]string{}},
+		{found: true, webpage: "/images/sub1/sub2/image-2.png", params: map[string]string{}},
+		{found: true, webpage: "/images/sub1/sub2/sub3/image-3.gif", params: map[string]string{}},
+		{found: true, webpage: "/noindex/documents/hello/world/file.pdf", params: map[string]string{}},
+		{found: true, webpage: "/cookies/are*delicious", params: map[string]string{}},
+		{found: false, webpage: "/cookies/are"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.webpage, func(t *testing.T) {
+			wasFound, _, params := root.Search(tc.webpage)
+			if wasFound != tc.found {
+				t.Fatalf("searching for %q should return %#v", tc.webpage, tc.found)
+			}
+			if tc.found && !reflect.DeepEqual(params, tc.params) {
+				t.Fatalf("searching for %q\n- %#v\n+ %#v", tc.webpage, params, tc.params)
+			}
+		})
+	}
+}
