@@ -144,5 +144,29 @@ func (t *privTrie) Search(endpoint string) (bool, http.Handler, map[string]strin
 		return false, nil, nil
 	}
 
+	if total == 1 && endpoint == sep && node.children[all] != nil {
+		// The root node is a special case, especially when using an asterisk.
+		// For example, if we define a route like the one below:
+		//
+		//   A. /*
+		//
+		// All the following URLs match as expected:
+		//
+		//   1. /hello
+		//   2. /hello/
+		//   3. /hello/world
+		//   4. /hello/world/
+		//   5. /hello/world/how-are-you
+		//   6. /hello/world/how-are-you/
+		//
+		// However, when we try to access "/" the for loop below does not work
+		// because the implementation is looking for a specific character to
+		// match when searching for nodes, and when searching for the root node
+		// at "/", there is no character to match.
+		//
+		// This condition handles this edge case.
+		return node.children[all].isTheEnd, node.children[all].handler, params
+	}
+
 	return node.isTheEnd, node.handler, params
 }
