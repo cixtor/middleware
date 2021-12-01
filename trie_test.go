@@ -244,3 +244,35 @@ func TestTrieWithAsterisk(t *testing.T) {
 		})
 	}
 }
+
+func TestTrieWithAsteriskGlobal(t *testing.T) {
+	root := newPrivTrie()
+
+	root.Insert("/*", nil)
+
+	testCases := []struct {
+		found   bool
+		webpage string
+		params  map[string]string
+	}{
+		{found: true, webpage: "/", params: map[string]string{}},
+		{found: true, webpage: "/hello", params: map[string]string{}},
+		{found: true, webpage: "/hello/", params: map[string]string{}},
+		{found: true, webpage: "/hello/world", params: map[string]string{}},
+		{found: true, webpage: "/hello/world/", params: map[string]string{}},
+		{found: true, webpage: "/hello/world/how-are-you", params: map[string]string{}},
+		{found: true, webpage: "/hello/world/how-are-you/", params: map[string]string{}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.webpage, func(t *testing.T) {
+			wasFound, _, params := root.Search(tc.webpage)
+			if wasFound != tc.found {
+				t.Fatalf("searching for %q should return %#v", tc.webpage, tc.found)
+			}
+			if tc.found && !reflect.DeepEqual(params, tc.params) {
+				t.Fatalf("searching for %q\n- %#v\n+ %#v", tc.webpage, params, tc.params)
+			}
+		})
+	}
+}
