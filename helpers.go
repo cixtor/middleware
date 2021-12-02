@@ -7,19 +7,11 @@ import (
 
 // Param returns the value for a parameter in the URL.
 func Param(r *http.Request, key string) string {
-	params, ok := r.Context().Value(paramsKey).([]httpParam)
-
+	params, ok := r.Context().Value(paramsKey).(map[string]string)
 	if !ok {
 		return ""
 	}
-
-	for _, param := range params {
-		if param.Name == key {
-			return param.Value
-		}
-	}
-
-	return ""
+	return params[key]
 }
 
 // Text responds to a request with a string in plain text.

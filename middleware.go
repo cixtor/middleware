@@ -246,8 +246,6 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	myRouter.Sort()
-
 	start := time.Now()
 	writer := response{w, 0, 0}
 	m.handleRequest(myRouter, &writer, r)
@@ -347,31 +345,24 @@ func (m *Middleware) notFoundHandler() http.Handler {
 }
 
 // findHandler returns a request handler that corresponds to the request URL.
-func (m *Middleware) findHandler(r *http.Request, ends []endpoint) (http.Handler, []httpParam) {
+func (m *Middleware) findHandler(r *http.Request, t *privTrie) (http.Handler, map[string]string) {
 	// TODO: optimize; this adds approximately 1100 ns/op.
 	reqPath := path.Clean(r.URL.Path)
 
-	// TODO: optimize; this adds approximately 2240 ns/op.
-	segments := strings.Split(reqPath, sep)
-
-	for _, end := range ends {
-		params, ok := end.Match(segments)
-
-		if !ok {
-			continue
-		}
-
-		if end.Handler == nil {
-			// We found a valid endpoint but it does not seem to have a valid
-			// HTTP handler. We will assume the endpoint does not exist, stop
-			// the iterator and return a "404 page not found" HTTP handler.
-			break
-		}
-
-		return end.Handler, params
+	// If the original URL has a trailing slash, add it back after cleanup, but
+	// make sure it is only one. This way the web server can render blind index
+	// pages, even when the URLs are cleaned.
+	if reqPath != sep && strings.HasSuffix(r.URL.Path, sep) {
+		reqPath += sep
 	}
 
-	return m.notFoundHandler(), nil
+	ok, handler, params := t.Search(reqPath)
+
+	if !ok {
+		return m.notFoundHandler(), nil
+	}
+
+	return handler, params
 }
 
 // Host registers a new Top-Level Domain (TLD), if necessary, and then returns

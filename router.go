@@ -15,7 +15,7 @@ type router struct {
 	// nodes is a key:value structure where the key represents HTTP methods and
 	// the value is a list of endpoints registered to handle HTTP requests at
 	// runtime.
-	nodes map[string][]endpoint
+	nodes map[string]*privTrie
 	// sorted is True if the nodes map is already sorted. The list
 	sorted bool
 }
@@ -23,7 +23,7 @@ type router struct {
 // newRouter creates a new instance of the routing machine.
 func newRouter() *router {
 	return &router{
-		nodes: map[string][]endpoint{},
+		nodes: map[string]*privTrie{},
 	}
 }
 
@@ -48,7 +48,10 @@ func (r *router) Sort() {
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
 func (r *router) register(method string, endpoint string, fn http.Handler) {
-	r.nodes[method] = append(r.nodes[method], parseEndpoint(endpoint, fn))
+	if _, ok := r.nodes[method]; !ok {
+		r.nodes[method] = newPrivTrie()
+	}
+	r.nodes[method].Insert(endpoint, fn)
 }
 
 // Handle registers the handler for the given pattern.
