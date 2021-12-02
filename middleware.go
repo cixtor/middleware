@@ -2,19 +2,11 @@ package middleware
 
 import (
 	"context"
-	"errors"
 	"log"
 	"net/http"
 	"path"
-	"strings"
 	"time"
 )
-
-// nohost is the default hostname unique identifier.
-const nohost = "_"
-
-// errNoMatch represents a simple matching error.
-var errNoMatch = errors.New("no matching route")
 
 // Middleware is an HTTP request multiplexer.
 //
@@ -118,18 +110,13 @@ type Middleware struct {
 	hosts map[string]*router
 
 	serverInstance *http.Server
-
-	serverShutdown chan bool
-}
-
-// httpParam represents a single parameter in the URL.
-type httpParam struct {
-	Name  string
-	Value string
 }
 
 // contextKey is the key for the parameters in the request Context.
 type contextKey string
+
+// nohost is the default hostname unique identifier.
+const nohost string = "_"
 
 // paramsKey is the key for the parameters in the request Context.
 var paramsKey = contextKey("MiddlewareParameter")
@@ -351,9 +338,10 @@ func (m *Middleware) findHandler(r *http.Request, t *privTrie) (http.Handler, ma
 
 	// If the original URL has a trailing slash, add it back after cleanup, but
 	// make sure it is only one. This way the web server can render blind index
-	// pages, even when the URLs are cleaned.
-	if reqPath != sep && strings.HasSuffix(r.URL.Path, sep) {
-		reqPath += sep
+	// pages, even when the URLs are cleaned. Omit operation when the cleaned
+	// request path already points to a blind index page.
+	if reqPath != string(sep) && r.URL.Path[len(r.URL.Path)-1] == sep {
+		reqPath += string(sep)
 	}
 
 	ok, handler, params := t.Search(reqPath)

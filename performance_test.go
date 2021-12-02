@@ -36,6 +36,12 @@ func (crw *CustomResponseWriter) WriteHeader(statusCode int) {
 // BenchmarkServeHTTP checks the performance of the ServeHTTP method.
 //
 //	go test -bench .
+//
+// Results:
+//
+//   - Average is 432058 and 6024 ns/op (rudimentary router)
+//   - Average is 293815 and 3909 ns/op (sophisticated router)
+//   - Average is 678906 and 1415 ns/op (trie data structure)
 func BenchmarkServeHTTP(b *testing.B) {
 	w := NewCustomResponseWriter()
 	r := httptest.NewRequest(http.MethodGet, "/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o"+
