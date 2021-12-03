@@ -4,6 +4,14 @@ import (
 	"net/http"
 )
 
+// sep represents the endpoint folder separator.
+//
+// Example:
+//
+//	/lorem/ipsum/dolor/sit/amet
+//	^     ^     ^     ^   ^
+var sep byte = '/'
+
 // nps stands for Named Parameter Symbol.
 //
 // Example:
@@ -12,6 +20,12 @@ import (
 //	             ^^^^^^ this is a NPS
 var nps byte = ':'
 
+// all represents any number of character after the folder separator.
+//
+// Example:
+//
+//	/lorem/ipsum/*/dolor/sit/amet
+//	              ^^^^^^^^^^^^^^^ this are not inserted in the trie.
 var all byte = '*'
 
 type privTrie struct {
@@ -39,9 +53,9 @@ func (t *privTrie) Insert(endpoint string, fn http.Handler) {
 	for i := 0; i < total; i++ {
 		char := endpoint[i]
 		param := ""
-		if char == nps && endpoint[i-1] == sep[0] {
+		if char == nps && endpoint[i-1] == sep {
 			j := i + 1
-			for ; j < total && endpoint[j] != sep[0]; j++ {
+			for ; j < total && endpoint[j] != sep; j++ {
 				// Consume all characters that follow a colon until we find the
 				// next forward slash or the end of the endpoint. Then, select
 				// those characters and use them as the parameter name.
@@ -58,7 +72,7 @@ func (t *privTrie) Insert(endpoint string, fn http.Handler) {
 			node.children[char].parameter = param
 		}
 		node = node.children[char]
-		if char == all && endpoint[i-1] == sep[0] {
+		if char == all && endpoint[i-1] == sep {
 			// If the character is an asterisk and the previous character is a
 			// URL separator, commonly a forward slash, then stop inserting new
 			// nodes and mark this character the end of the URL.
@@ -108,7 +122,7 @@ func (t *privTrie) Search(endpoint string) (bool, http.Handler, map[string]strin
 		// Check if there is a parameterized URL segment under this node.
 		if node.children[nps] != nil {
 			j := i
-			for ; j < total && endpoint[j] != sep[0]; j++ {
+			for ; j < total && endpoint[j] != sep; j++ {
 				// Consume all characters between the colon and the next slash.
 				//
 				// For example, if a route is defined as:
@@ -144,7 +158,7 @@ func (t *privTrie) Search(endpoint string) (bool, http.Handler, map[string]strin
 		return false, nil, nil
 	}
 
-	if total == 1 && endpoint == sep && node.children[all] != nil {
+	if total == 1 && endpoint[0] == sep && node.children[all] != nil {
 		// The root node is a special case, especially when using an asterisk.
 		// For example, if we define a route like the one below:
 		//
