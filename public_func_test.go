@@ -390,6 +390,30 @@ func TestServeFilesFakeScript(t *testing.T) {
 	curl(t, "GET", "localhost", addr, "/tag/js/foo.js", []byte("404 page not found\n"))
 }
 
+func TestRouteWithExtraSlash(t *testing.T) {
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/hello/world", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello"))
+	})
+	go srv.ListenAndServe(addr.String())
+
+	curl(t, "GET", "localhost", addr, "/hello///////world", []byte("hello"))
+}
+
+func TestRouteWithExtraSlash2(t *testing.T) {
+	srv, addr := newTestServer(t)
+	srv.DiscardLogs()
+	defer srv.Shutdown()
+	srv.GET("/hello/world", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello"))
+	})
+	go srv.ListenAndServe(addr.String())
+
+	curl(t, "GET", "localhost", addr, "///////hello/world", []byte("hello"))
+}
+
 func TestTrailingSlash(t *testing.T) {
 	srv, addr := newTestServer(t)
 	srv.DiscardLogs()
@@ -452,30 +476,6 @@ func TestRouteWithAsterisk(t *testing.T) {
 	go srv.ListenAndServe(addr.String())
 
 	curl(t, "GET", "localhost", addr, "/home/users/a/b/root", []byte("robot"))
-}
-
-func TestRouteWithExtraSlash(t *testing.T) {
-	srv, addr := newTestServer(t)
-	srv.DiscardLogs()
-	defer srv.Shutdown()
-	srv.GET("/hello///////world", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("hello"))
-	})
-	go srv.ListenAndServe(addr.String())
-
-	curl(t, "GET", "localhost", addr, "/hello/world", []byte("hello"))
-}
-
-func TestRouteWithExtraSlash2(t *testing.T) {
-	srv, addr := newTestServer(t)
-	srv.DiscardLogs()
-	defer srv.Shutdown()
-	srv.GET("///////hello/world", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("hello"))
-	})
-	go srv.ListenAndServe(addr.String())
-
-	curl(t, "GET", "localhost", addr, "/hello/world", []byte("hello"))
 }
 
 func TestMultipleDynamic(t *testing.T) {
@@ -680,9 +680,9 @@ func TestEndpointOrder(t *testing.T) {
 		{"test_4", "/usr/local/etc/openssl/cert.pem", "endpoint #5"},
 		{"test_5", "/help/viva/family/foo/bar", "endpoint #6"},
 		{"test_6", "/help/viva/family/foobar", "endpoint #6"},
-		{"test_7", "/help/viva/family", "endpoint #7"},
-		{"test_8", "/any/thing", "endpoint #7"},
-		{"test_9", "/hello/world/how/are/you", "endpoint #7"},
+		{"test_7", "/x/help/viva/family", "endpoint #7"},
+		{"test_8", "/y/any/thing", "endpoint #7"},
+		{"test_9", "/z/hello/world/how/are/you", "endpoint #7"},
 	}
 
 	for _, input := range inputs {
